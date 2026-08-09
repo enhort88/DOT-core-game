@@ -14,7 +14,11 @@ public class DotCoreGame extends Game {
         assets.load(settings.language);
         assets.startMusic(settings);
         saves = new SaveRepository();
-        setScreen(new MenuScreen(this));
+        if (!settings.introSeen || settings.playerName == null || settings.playerName.trim().isEmpty()) {
+            setScreen(new IntroScreen(this, false));
+        } else {
+            setScreen(new MenuScreen(this));
+        }
     }
 
     public void applyLanguage(String language) {
@@ -31,6 +35,7 @@ public class DotCoreGame extends Game {
 
     public void openMenu() { changeScreen(new MenuScreen(this)); }
     public void playSlot(int slot) { changeScreen(new GameScreen(this, saves.load(slot))); }
+    public void showIntroAgain() { changeScreen(new IntroScreen(this, true)); }
 
     @Override public void dispose() {
         super.dispose();

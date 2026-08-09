@@ -94,12 +94,13 @@ public class MenuScreen extends ScreenAdapter {
             }
             if(btn(260).contains(x,y)) mode=Mode.MAIN;
         } else if(mode==Mode.SETTINGS){
-            if(new Rectangle(270,1210,540,110).contains(x,y)){
+            if(new Rectangle(270,1280,540,110).contains(x,y)){
                 game.applyLanguage("ru".equals(game.settings.language)?"en":"ru"); return;
             }
-            if(new Rectangle(270,570,540,110).contains(x,y)){ game.settings.vibration=!game.settings.vibration; game.settings.save(); return; }
-            if(new Rectangle(270,410,540,110).contains(x,y)){ game.settings.highEffects=!game.settings.highEffects; game.settings.save(); return; }
-            if(btn(260).contains(x,y)) mode=Mode.MAIN;
+            if(new Rectangle(270,650,540,110).contains(x,y)){ game.settings.vibration=!game.settings.vibration; game.settings.save(); return; }
+            if(new Rectangle(270,510,540,110).contains(x,y)){ game.settings.highEffects=!game.settings.highEffects; game.settings.save(); return; }
+            if(new Rectangle(270,370,540,110).contains(x,y)){ game.showIntroAgain(); return; }
+            if(btn(210).contains(x,y)) mode=Mode.MAIN;
         } else if(mode==Mode.ABOUT){ if(btn(340).contains(x,y)) mode=Mode.MAIN; }
         else if(mode==Mode.DELETE_CONFIRM){
             if(new Rectangle(180,720,330,120).contains(x,y)){ if(pendingDeleteSlot>0)game.saves.delete(pendingDeleteSlot); pendingDeleteSlot=-1;mode=Mode.SLOTS;return; }
@@ -136,9 +137,11 @@ public class MenuScreen extends ScreenAdapter {
 
         batch.begin();
         Ui.text(batch,game.assets.font,"DOT//CORE",322,1780,1.65f,Color.WHITE);
-        Ui.text(batch,game.assets.font,"ALPHA 0.10 // HUD & TRAIL",352,1700,0.54f,new Color(Ui.CYAN.r,Ui.CYAN.g,Ui.CYAN.b,0.8f));
+        Ui.text(batch,game.assets.font,"ALPHA 0.11.1 // PORTRAIT PASS",352,1700,0.54f,new Color(Ui.CYAN.r,Ui.CYAN.g,Ui.CYAN.b,0.8f));
+        if(game.settings.playerName!=null&&!game.settings.playerName.trim().isEmpty())
+            Ui.centered(batch,game.assets.font,game.assets.t("welcome_back")+", "+game.settings.playerName,new Rectangle(150,1565,780,82),.70f,new Color(.72f,.88f,1f,1));
         if(cheatMessageTime>0f){
-            Ui.centered(batch,game.assets.font,cheatMessage,new Rectangle(170,1430,740,100),.86f,game.settings.cheatsEnabled?Ui.GREEN:Ui.RED);
+            Ui.centered(batch,game.assets.font,cheatMessage,new Rectangle(150,1420,780,110),.96f,game.settings.cheatsEnabled?Ui.GREEN:Ui.RED);
         }
         batch.end();
 
@@ -171,7 +174,7 @@ public class MenuScreen extends ScreenAdapter {
             sr.end();
             SaveData s=game.saves.load(i);
             batch.begin();
-            Ui.text(batch,game.assets.font,game.assets.t("slot")+" "+i,r.x+32,r.y+104,0.88f,Ui.CYAN);
+            Ui.text(batch,game.assets.font,game.assets.t("slot")+" "+i+(game.settings.playerName==null||game.settings.playerName.isEmpty()?"":"  •  "+game.settings.playerName),r.x+32,r.y+104,0.76f,Ui.CYAN);
             if(game.saves.exists(i)){
                 Ui.text(batch,game.assets.font,game.assets.t("last_wave")+": "+s.wave+"     C "+formatCredits(s.credits),r.x+32,r.y+52,0.64f,Color.WHITE);
                 Ui.text(batch,game.assets.font,"T "+s.turretCount+"  •  D "+s.droneCount(),r.x+510,r.y+103,0.52f,new Color(.62f,.80f,.90f,1));
@@ -183,13 +186,14 @@ public class MenuScreen extends ScreenAdapter {
     }
 
     private void drawSettings(){
-        batch.begin(); Ui.text(batch,game.assets.font,game.assets.t("settings"),360,1510,1.12f,Color.WHITE); batch.end();
-        drawButton(new Rectangle(270,1210,540,110),game.assets.t("language")+": "+("ru".equals(game.settings.language)?game.assets.t("russian"):game.assets.t("english")),true);
-        drawSlider(game.assets.t("sound_volume"),game.settings.soundVolume,1010);
-        drawSlider(game.assets.t("music_volume"),game.settings.musicVolume,810);
-        drawButton(new Rectangle(270,570,540,110),game.assets.t("vibration")+": "+(game.settings.vibration?game.assets.t("on"):game.assets.t("off")),true);
-        drawButton(new Rectangle(270,410,540,110),game.assets.t("effects")+": "+(game.settings.highEffects?game.assets.t("on"):game.assets.t("off")),true);
-        drawButton(btn(260),game.assets.t("back"),true);
+        batch.begin(); Ui.text(batch,game.assets.font,game.assets.t("settings"),360,1545,1.16f,Color.WHITE); batch.end();
+        drawButton(new Rectangle(270,1280,540,110),game.assets.t("language")+": "+("ru".equals(game.settings.language)?game.assets.t("russian"):game.assets.t("english")),true);
+        drawSlider(game.assets.t("sound_volume"),game.settings.soundVolume,1080);
+        drawSlider(game.assets.t("music_volume"),game.settings.musicVolume,880);
+        drawButton(new Rectangle(270,650,540,110),game.assets.t("vibration")+": "+(game.settings.vibration?game.assets.t("on"):game.assets.t("off")),true);
+        drawButton(new Rectangle(270,510,540,110),game.assets.t("effects")+": "+(game.settings.highEffects?game.assets.t("on"):game.assets.t("off")),true);
+        drawButton(new Rectangle(270,370,540,110),game.assets.t("show_intro"),true);
+        drawButton(btn(210),game.assets.t("back"),true);
     }
 
     private void drawSlider(String label,float value,float y){
@@ -207,8 +211,8 @@ public class MenuScreen extends ScreenAdapter {
     }
 
     private boolean beginSlider(float x,float y){
-        if(new Rectangle(240,1015,600,85).contains(x,y)){draggingSlider=1;updateSlider(x);return true;}
-        if(new Rectangle(240,815,600,85).contains(x,y)){draggingSlider=2;updateSlider(x);return true;}
+        if(new Rectangle(240,1085,600,85).contains(x,y)){draggingSlider=1;updateSlider(x);return true;}
+        if(new Rectangle(240,885,600,85).contains(x,y)){draggingSlider=2;updateSlider(x);return true;}
         return false;
     }
 
@@ -227,14 +231,14 @@ public class MenuScreen extends ScreenAdapter {
         Ui.text(batch,game.assets.font,game.assets.t("about_text"),205,1150,0.72f,new Color(0.82f,0.92f,1f,1));
         Ui.text(batch,game.assets.font,game.assets.t("developer")+": Ponikarov Artem",205,975,0.68f,Color.WHITE);
         Ui.text(batch,game.assets.font,"enhort@gmail.com",205,895,0.68f,Ui.CYAN);
-        Ui.text(batch,game.assets.font,"DOT//CORE  Alpha 0.10",205,795,0.58f,new Color(.64f,.82f,.94f,1));
+        Ui.text(batch,game.assets.font,"DOT//CORE  Alpha 0.11.1",205,795,0.58f,new Color(.64f,.82f,.94f,1));
         batch.end();
         drawButton(btn(340),game.assets.t("back"),true);
     }
 
     private void drawDeleteConfirm(){
         sr.begin(ShapeRenderer.ShapeType.Filled);sr.setColor(0,0,0,.66f);sr.rect(0,0,1080,1920);Rectangle p=new Rectangle(125,620,830,500);Ui.panel(sr,p,Ui.RED);sr.end();
-        batch.begin();Ui.centered(batch,game.assets.font,game.assets.t("delete_confirm"),new Rectangle(175,950,730,100),.92f,Color.WHITE);Ui.centered(batch,game.assets.font,game.assets.t("slot")+" "+pendingDeleteSlot,new Rectangle(175,880,730,70),.68f,Ui.CYAN);batch.end();
+        batch.begin();Ui.centered(batch,game.assets.font,game.assets.t("delete_confirm"),new Rectangle(155,940,770,115),1.02f,Color.WHITE);Ui.centered(batch,game.assets.font,game.assets.t("slot")+" "+pendingDeleteSlot,new Rectangle(155,855,770,80),.78f,Ui.CYAN);batch.end();
         drawButton(new Rectangle(180,720,330,120),game.assets.t("delete_yes"),true);drawButton(new Rectangle(570,720,330,120),game.assets.t("delete_no"),true);
     }
 

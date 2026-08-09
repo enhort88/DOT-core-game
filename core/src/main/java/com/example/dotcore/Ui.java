@@ -25,7 +25,7 @@ public final class Ui {
         sr.setColor(enabled ? (hot ? CYAN : new Color(CYAN.r,CYAN.g,CYAN.b,0.55f)) : new Color(0.25f,0.28f,0.32f,0.5f));
         sr.rect(r.x,r.y,r.width,2); sr.rect(r.x,r.y+r.height-2,r.width,2); sr.rect(r.x,r.y,2,r.height); sr.rect(r.x+r.width-2,r.y,2,r.height);
     }
-    public static void text(SpriteBatch batch, GlyphFont font, String text, float x, float y, float scale, Color color) { font.draw(batch,text,x,y,scale,color); }
+    public static void text(SpriteBatch batch, GlyphFont font, String text, float x, float y, float scale, Color color) { font.draw(batch,text,x,y,scale*1.18f,color); }
     public static void centered(SpriteBatch batch, GlyphFont font, String text, Rectangle r, float scale, Color color) {
         float tw=font.width(text,scale), th=font.height(text,scale); font.draw(batch,text,r.x+(r.width-tw)/2f,r.y+(r.height+th*.72f)/2f,scale,color);
     }

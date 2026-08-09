@@ -1,0 +1,16 @@
+-source
+17
+-target
+17
+core/src/main/java/com/example/dotcore/IntroScreen.java
+core/src/main/java/com/example/dotcore/SaveData.java
+core/src/main/java/com/example/dotcore/Assets.java
+core/src/main/java/com/example/dotcore/MenuScreen.java
+core/src/main/java/com/example/dotcore/DroneType.java
+core/src/main/java/com/example/dotcore/Element.java
+core/src/main/java/com/example/dotcore/SaveRepository.java
+core/src/main/java/com/example/dotcore/Ui.java
+core/src/main/java/com/example/dotcore/GlobalSettings.java
+core/src/main/java/com/example/dotcore/GlyphFont.java
+core/src/main/java/com/example/dotcore/GameScreen.java
+core/src/main/java/com/example/dotcore/DotCoreGame.java

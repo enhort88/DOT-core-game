@@ -1,14 +1,12 @@
-# DOT//CORE — Alpha 0.10
+# DOT//CORE — Alpha 0.11.1 // PORTRAIT PASS
 
-Cross-platform Java/libGDX prototype for Android + Linux/Windows desktop.
+Cross-platform Java/libGDX game prototype for Android + Linux/Windows desktop.
 
 ## Run on desktop
 
 ```bash
 ./gradlew -PskipAndroid :lwjgl3:run
 ```
-
-`-PskipAndroid` excludes the Android module. The included bootstrap uses Gradle 9.5.0.
 
 ## Build/install Android
 
@@ -23,78 +21,82 @@ APK:
 android/build/outputs/apk/debug/android-debug.apk
 ```
 
-Requires compileSdk 36 and JDK 17+.
+Requires JDK 17+ and Android compileSdk 36.
 
-## Controls
+## First launch
 
-Desktop / Android:
-- Tap/click: basic finger attack.
-- Hold and release: Plasma after unlocking it.
-- Drag: Trail after unlocking it.
-- Two fingers on Android: Ultimate after unlocking it.
-- Bottom buttons open Debuffs, Effect Setup and Shop.
-- `S`: shop, `Space`: pause, `Esc`: pause/back.
+On the first launch the game asks for the commander's name, stores it globally, then shows a short four-page military briefing. The intro can be replayed from Settings and the name can be changed there.
 
-## Alpha 0.10 highlights
+## Alpha 0.11 / 0.11.1 highlights
 
-### Economy and difficulty
-- Normal economy is enabled by default; cheat mode remains a hidden easter egg.
-- New save starts with `120 C` and `1 C/s` passive income.
-- Passive income is earned **only while combat is running**. Shop, Debuffs, Effect Setup, Effect Shop and Pause freeze the game economy and timers.
-- The old `General` shop tab was removed. Combat upgrades live only in Finger / Turrets / Drones.
-- Enemy-value/risk upgrades live only in `Debuffs`.
-- Debuffs are cheaper and now increase passive income much more strongly.
-- Debuffs are grouped into Enemy Power, Pressure and Economy for easier reading.
+### Progressive technology discovery
+- Normal mode no longer exposes the whole tech tree at once.
+- Finger begins with Tap Damage only. The next technology is shown as `???` until its requirements are met and it is purchased.
+- Finger chain: Tap -> Plasma -> Roscherk -> Annihilation -> Gravity.
+- Turrets begin with Buy Turret / Damage / Fire Rate / Shield / Repair skill; Laser, Rockets, Auto Repair and +2 slots are discovered later.
+- Drones begin with Gun Drone / Damage / Fire Rate; Missile, Support, Kamikaze, Aura and +2 slots are discovered later.
+- The Effect Shop itself appears only after defeating the fifth boss; Fire, Ice and Lightning are then discovered in sequence.
+- Cheat mode is a real test mode: all technologies, elements, weapons and late-game systems are treated as unlocked immediately and purchases are free.
 
-### Wave curve
-- Wave 1 is an introductory wave: only slow normal enemies, lower HP, slower spawn and no enemy shooting.
-- From wave 2 the game introduces fast/tank/elite enemies and hostile fire.
-- Spawn pressure increases progressively by wave.
-- Enemy movement speed grows slightly every wave and more noticeably after bosses.
-- Boss remains every fifth wave.
+### Annihilation
+- Two-finger Ultimate is renamed **Annihilation**.
+- Maximum active use is 3 seconds.
+- It then enters a long cooldown, displayed as a thin status bar below planet HP.
+- Skill-by-use levels slightly reduce cooldown.
 
-### Turrets
-- New games start with zero turrets; the first turret is purchased.
-- A single turret is placed exactly at the center of the defense line.
-- Base turret fire rate is slightly slower so the fire-rate upgrade has more value.
-- Turret damage/rate/shield remain independent upgrades.
+### Repair gameplay
+- A broken/damaged turret is not repaired by one tap.
+- A basic turret takes about five repair taps; shield upgrades increase required work.
+- Every repair tap costs credits in normal mode, restores a portion of shield, plays welding sparks and awards Repair XP.
+- Repair skill improves manual repair efficiency and later gates Auto Repair.
+- Parasite infection is also cleansed by manual taps.
 
-### UI / UX
-- Shop now has only three build tabs: Finger, Turrets, Drones.
-- Effect Setup is reorganized into three clear source groups:
-  - Finger: attack element.
-  - Turrets: attack element + weapon.
-  - Drones: attack element + aura element.
-- Debuffs are organized into logical sections and each card shows how much passive `C/s` the next level adds.
-- Shop / Debuffs / Effect buttons have a short energy-pulse press animation.
+### Geometric invasion
+- Wave 1 uses simple circles and is deliberately introductory.
+- From wave 5, polygons enter the invasion.
+- Around wave 10, aggressive triangular craft become common.
+- Shapes are paired with existing fast/tank/elite/boss roles so the battlefield becomes visually richer as the war develops.
 
-### Music and sound
-- Added an original looping space ambient background track.
-- Music volume is adjustable in Settings: 0 / 25 / 50 / 75 / 100%.
-- SFX toggle remains independent from music volume.
-- Existing synthesized combat SFX and vibration are retained.
+### Alien technology
+Hostile special attacks are deliberately separate from the player's Fire / Ice / Lightning elements:
+- **Corrosion** — damage-over-time against turret/drone shields.
+- **Parasites** — infect a turret or drone; the infected unit attacks allies until cleansed manually.
+- **Disruption** — temporarily jams firing.
+- **Touch shields** — elite/boss craft can briefly deploy a transparent field that rejects direct finger taps.
 
-## Existing core systems
+Enemies prefer nearby drones as targets, otherwise they fire at turrets. Hostile attacks are visible projectiles rather than unexplained beams.
 
-- Descending enemy spheres, waves, rush periods, bosses and planet integrity.
-- Finger Tap / Plasma / Trail / Ultimate / Gravity.
-- Fire / Ice / Lightning status effects.
-- Turrets with shields, manual repair and auto-repair.
-- Gun, missile, kamikaze and support drones.
-- Drone shields, respawn delay and support healing.
-- Drone elemental auras.
-- 5 independent save slots with deletion confirmation.
+### Element visual pass
+- Fire attacks have hot cores, sparks, lingering flames and visibly burning enemies.
+- Ice uses crystalline projectiles/shards, frost shells and visible freeze states.
+- Lightning uses jagged white-blue arcs with branches and visible chain jumps.
+- Gravity remains a Finger-only late technology; heavy enemies resist pull and bosses move only slightly unless gravity is strongly charged.
+
+### First-run story / profile
+- The player enters a name on first launch.
+- Main menu greets the player by name and save slots also show it.
+- Short offline briefing introduces the general, a military officer and the geometry-obsessed alien invasion.
+- Settings includes **Replay introduction** and allows changing the player name during the replay.
+
+### Existing systems retained
+- 5 save slots with deletion confirmation.
+- Normal economy + risk/reward Debuffs.
+- Passive income advances only while combat itself is running.
+- Turret predictive aiming and homing rockets.
+- Drone movement, support healing, kamikaze contact attacks and elemental auras.
+- Bonus pickups that must be tapped.
 - RU/EN localization.
-- Hidden cheat easter egg: tap `DOT` in `DOT//CORE` 10 times to toggle free purchases.
+- Separate SFX and music volume sliders, looping space music and Android vibration.
+- Hidden cheat toggle: tap the `DOT` part of `DOT//CORE` ten times in the main menu; ten more taps turn it off.
 
 ## Project structure
 
 ```text
 DotCoreLibGDX/
 ├── assets/       shared game assets, localization, music and SFX
-├── core/         gameplay and rendering
+├── core/         gameplay, progression, UI and rendering
 ├── lwjgl3/       desktop launcher
 └── android/      Android launcher
 ```
 
-See `CHANGELOG_ALPHA_0.10.md` and `BALANCE_ALPHA_0.9.md` for this pass.
+See `CHANGELOG_ALPHA_0.11.md` and `PROGRESSION_ALPHA_0.11.md`.

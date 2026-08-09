@@ -17,6 +17,9 @@ public class SaveRepository {
             SaveData s = json.fromJson(SaveData.class, prefs.getString("slot." + slot));
             s.slot = slot;
             if (s.kamikazeDrones > 0) s.kamikazeUnlocked = true;
+            if (s.missileDrones > 0) s.missileDroneUnlocked = true;
+            if (s.supportDrones > 0) s.supportDroneUnlocked = true;
+            if (s.droneAuraLevel > 0) s.droneAuraUnlocked = true;
             return s;
         } catch (Exception e) {
             return fresh(slot);

@@ -13,6 +13,7 @@ public class Assets {
     public I18NBundle i18n;
     public Sound shot, pop, explosion, laser, rocket, buy, wave, boss, plasma, electric, ice;
     public Music backgroundMusic;
+    public Texture generalPortrait, officerPortrait;
     private final ObjectMap<String, Texture> icons = new ObjectMap<>();
 
     private static final String[] ICON_NAMES = {
@@ -21,7 +22,7 @@ public class Assets {
         "tapDmg","tapRate","plasma","trail","ultimate","gravity",
         "buyTurret","turretDmg","turretRate","turretShield","repairTurrets","autoRepair","laser","rockets","cycleWeapon","turretPlusTwo",
         "gunDrone","missileDrone","kamikaze","support","droneDmg","droneRate","droneAura","droneShield","dronePlusTwo",
-        "fire","ice","lightning","config","shop_button","neutral","bonus_credit","bonus_heal","bonus_overdrive"
+        "fire","ice","lightning","unknown","config","shop_button","neutral","bonus_credit","bonus_heal","bonus_overdrive"
     };
 
     public void load(String language) {
@@ -40,6 +41,8 @@ public class Assets {
         ice = snd("sfx/ice.wav");
         try { backgroundMusic = Gdx.audio.newMusic(Gdx.files.internal("music/space_loop.ogg")); backgroundMusic.setLooping(true); } catch (Exception ignored) { backgroundMusic = null; }
         loadIcons();
+        generalPortrait = tex("portraits/general.png");
+        officerPortrait = tex("portraits/officer.png");
     }
 
     private void loadIcons() {
@@ -53,6 +56,11 @@ public class Assets {
     }
 
     public Texture icon(String name) { return icons.get(name); }
+
+    private Texture tex(String path) {
+        try { Texture t = new Texture(Gdx.files.internal(path)); t.setFilter(Texture.TextureFilter.Linear, Texture.TextureFilter.Linear); return t; }
+        catch (Exception e) { return null; }
+    }
 
     private Sound snd(String path) {
         try { return Gdx.audio.newSound(Gdx.files.internal(path)); }
@@ -93,6 +101,8 @@ public class Assets {
         Sound[] ss = {shot,pop,explosion,laser,rocket,buy,wave,boss,plasma,electric,ice};
         for (Sound s:ss) if (s!=null) s.dispose();
         if (backgroundMusic != null) backgroundMusic.dispose();
+        if (generalPortrait != null) generalPortrait.dispose();
+        if (officerPortrait != null) officerPortrait.dispose();
         for (Texture t : icons.values()) if (t != null) t.dispose();
         icons.clear();
     }

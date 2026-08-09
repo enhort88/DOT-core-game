@@ -11,6 +11,8 @@ public class GlobalSettings {
     public boolean highEffects = true;
     public boolean cheatsEnabled = false;
     public float musicVolume = 0.50f;
+    public String playerName = "";
+    public boolean introSeen = false;
 
     public void load() {
         Preferences p = Gdx.app.getPreferences("dotcore.settings");
@@ -21,6 +23,8 @@ public class GlobalSettings {
         highEffects = p.getBoolean("highEffects", true);
         cheatsEnabled = p.getBoolean("cheatsEnabled", false);
         musicVolume = p.getFloat("musicVolume", 0.50f);
+        playerName = p.getString("playerName", "");
+        introSeen = p.getBoolean("introSeen", false);
     }
 
     public void save() {
@@ -32,6 +36,8 @@ public class GlobalSettings {
             .putBoolean("highEffects", highEffects)
             .putBoolean("cheatsEnabled", cheatsEnabled)
             .putFloat("musicVolume", musicVolume)
+            .putString("playerName", playerName == null ? "" : playerName)
+            .putBoolean("introSeen", introSeen)
             .flush();
     }
 }

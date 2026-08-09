@@ -4,12 +4,6 @@ plugins {
 
 configurations { natives }
 
-def keystorePropertiesFile = rootProject.file('keystore.properties')
-def keystoreProperties = new Properties()
-if (keystorePropertiesFile.exists()) {
-    keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
-}
-
 android {
     namespace 'com.example.dotcore'
     compileSdk 36
@@ -18,25 +12,8 @@ android {
         applicationId 'com.example.dotcore'
         minSdk 24
         targetSdk 35
-        versionCode 8
-        versionName '0.10.0-alpha'
-    }
-
-    signingConfigs {
-        release {
-            if (keystorePropertiesFile.exists()) {
-                storeFile rootProject.file(keystoreProperties['storeFile'])
-                storePassword keystoreProperties['storePassword']
-                keyAlias keystoreProperties['keyAlias']
-                keyPassword keystoreProperties['keyPassword']
-            }
-        }
-    }
-
-    buildTypes {
-        release {
-            signingConfig signingConfigs.release
-        }
+        versionCode 10
+        versionName '0.11.1-alpha'
     }
 
     sourceSets {
@@ -56,14 +33,6 @@ android {
 
     packaging {
         resources.excludes += ['META-INF/robovm/ios/robovm.xml']
-    }
-}
-
-androidComponents {
-    onVariants(selector().withBuildType("release")) { variant ->
-        variant.outputs.forEach { output ->
-            output.outputFileName.set("DOT-CORE-${android.defaultConfig.versionName}.apk")
-        }
     }
 }
 
@@ -96,18 +65,5 @@ tasks.register('copyAndroidNatives') {
 tasks.configureEach { task ->
     if (task.name.contains('merge') && task.name.contains('JniLibFolders')) {
         task.dependsOn 'copyAndroidNatives'
-    }
-}
-
-tasks.register('copySignedApkToRelease', Copy) {
-    from("$buildDir/outputs/apk/release") {
-        include '*.apk'
-    }
-    into rootProject.file('RELEASE')
-}
-
-afterEvaluate {
-    tasks.named('assembleRelease') {
-        finalizedBy 'copySignedApkToRelease'
     }
 }

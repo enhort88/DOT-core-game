@@ -7,7 +7,7 @@ import com.example.dotcore.DotCoreGame;
 public class Lwjgl3Launcher {
     public static void main(String[] args) {
         Lwjgl3ApplicationConfiguration config = new Lwjgl3ApplicationConfiguration();
-        config.setTitle("DOT//CORE Alpha 0.4");
+        config.setTitle("DOT//CORE Alpha 0.11.1");
         config.setWindowIcon("icon-128.png");
         config.setWindowedMode(540, 960);
         config.setForegroundFPS(120);
