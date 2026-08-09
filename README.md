@@ -1,4 +1,4 @@
-# DOT//CORE — Alpha 0.6
+# DOT//CORE — Alpha 0.7
 
 Cross-platform Java/libGDX prototype for Android + Linux/Windows desktop.
 
@@ -47,7 +47,7 @@ Android:
 - Two-finger drag activates the ultimate after it is purchased.
 - Short vibration feedback is used for taps, purchases, explosions, bosses and gravity skills when enabled.
 
-## Implemented in Alpha 0.6
+## Implemented in Alpha 0.7
 
 ### Game loop
 - Enemy spheres descend toward the planet.
@@ -146,7 +146,7 @@ This is still an Alpha vertical slice, not final balance. Numbers/prices are int
 
 ## Test build notes
 
-Alpha 0.6 has `BuildFlags.TEST_MODE = true`: shop purchases and manual turret repairs do not spend credits, and the HUD shows unlimited test credits. Set it to `false` before economy balancing.
+Alpha 0.7 has `BuildFlags.TEST_MODE = true`: shop purchases and manual turret repairs do not spend credits, and the HUD shows unlimited test credits. Set it to `false` before economy balancing.
 
 
 See `CHANGELOG_ALPHA_0.4.md` for the latest UI/combat-feel changes.

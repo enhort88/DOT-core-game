@@ -13,6 +13,8 @@ public class SaveData {
     public int spawnRateLevel = 0;
     public int enemyValueLevel = 0;
     public int enemySpeedLevel = 0;
+    public int enemyDamageLevel = 0;
+    public int enemyHealthLevel = 0;
 
     public int tapDamageLevel = 0;
     public int tapSpeedLevel = 0;
@@ -21,7 +23,7 @@ public class SaveData {
     public boolean ultimateUnlocked = false;
     public boolean gravityUnlocked = false;
 
-    public int turretCount = 1;
+    public int turretCount = 0;
     public boolean turretPlusTwo = false;
     public int turretDamageLevel = 0;
     public int turretRateLevel = 0;
@@ -73,9 +75,14 @@ public class SaveData {
     public float generalDamageMultiplier() { return 1f + generalDamageLevel * 0.12f; }
     public float generalRateMultiplier() { return 1f + generalRateLevel * 0.10f; }
     public float creditMultiplier() { return 1f + creditYieldLevel * 0.15f + enemyValueLevel * 0.20f; }
-    public float passiveIncomePerSecond() { return 1f + 0.5f * (densityLevel + spawnRateLevel + enemyValueLevel) + 0.75f * enemySpeedLevel; }
+    public float passiveIncomePerSecond() {
+        return 1f + 0.45f * (densityLevel + spawnRateLevel + enemyValueLevel)
+            + 0.60f * enemySpeedLevel + 0.55f * enemyDamageLevel + 0.55f * enemyHealthLevel;
+    }
     public float spawnMultiplier() { return 1f + spawnRateLevel * 0.14f; }
     public int densityBonus() { return densityLevel * 3; }
     public float enemyValueMultiplier() { return 1f + enemyValueLevel * 0.22f; }
+    public float enemyHealthMultiplier() { return 1f + enemyHealthLevel * 0.16f; }
+    public float enemyDamageMultiplier() { return 1f + enemyDamageLevel * 0.15f; }
     public float enemySpeedMultiplier() { return 1f + totalBossKills * 0.08f + enemySpeedLevel * 0.10f; }
 }

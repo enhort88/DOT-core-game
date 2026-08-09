@@ -42,7 +42,7 @@ public class GameScreen extends ScreenAdapter {
     private final Vector3 tmp3=new Vector3();
     private final Touch[] touches=new Touch[10];
 
-    private boolean shopOpen=false, elementConfigOpen=false, effectShopOpen=false, paused=false, defeated=false, shopSellMode=false;
+    private boolean shopOpen=false, elementConfigOpen=false, effectShopOpen=false, debuffShopOpen=false, paused=false, defeated=false, shopSellMode=false;
     private int shopTab=0;
     private float spawnTimer=0f, waveClock=0f, passiveClock=0f, saveClock=0f, hostilePulseClock=0f, bonusTimer=14f, overdriveTime=0f;
     private float bannerTime=2.2f;
@@ -110,19 +110,19 @@ public class GameScreen extends ScreenAdapter {
         this.game=game; this.save=save;
         for(int i=0;i<touches.length;i++) touches[i]=new Touch();
         rebuildDefenses();
-        banner=game.assets.t("wave_incoming")+"  "+save.wave;
+        banner=game.assets.t("wave")+"  "+save.wave;
         Gdx.input.setInputProcessor(new InputAdapter(){
             @Override public boolean touchDown(int sx,int sy,int pointer,int button){
                 if(pointer>=touches.length) return false;
                 Vector3 p=viewport.unproject(tmp3.set(sx,sy,0));
                 if(handleUiDown(p.x,p.y)) return true;
-                if(shopOpen||paused||defeated) return true;
+                if(shopOpen||debuffShopOpen||effectShopOpen||elementConfigOpen||paused||defeated) return true;
                 Touch t=touches[pointer]; t.down=true;t.x=t.startX=p.x;t.y=t.startY=p.y;t.startTime=save.playSeconds;t.lastTrailTime=0;t.chargeFxClock=0;t.dragged=false;t.twoFinger=false;
                 markTwoFinger();
                 return true;
             }
             @Override public boolean touchDragged(int sx,int sy,int pointer){
-                if(pointer>=touches.length||shopOpen||paused||defeated) return false;
+                if(pointer>=touches.length||shopOpen||debuffShopOpen||effectShopOpen||elementConfigOpen||paused||defeated) return false;
                 Vector3 p=viewport.unproject(tmp3.set(sx,sy,0));
                 Touch t=touches[pointer]; if(!t.down) return false;
                 float oldX=t.x,oldY=t.y; t.x=p.x;t.y=p.y;
@@ -139,7 +139,7 @@ public class GameScreen extends ScreenAdapter {
                 if(pointer>=touches.length) return false;
                 Vector3 p=viewport.unproject(tmp3.set(sx,sy,0));
                 Touch t=touches[pointer];
-                if(shopOpen||paused||defeated){t.down=false;return true;}
+                if(shopOpen||debuffShopOpen||effectShopOpen||elementConfigOpen||paused||defeated){t.down=false;return true;}
                 boolean wasTwo=t.twoFinger||twoTouchesDown();
                 float held=save.playSeconds-t.startTime;
                 t.x=p.x;t.y=p.y;
@@ -178,16 +178,18 @@ public class GameScreen extends ScreenAdapter {
             return true;
         }
         if(paused){
-            if(new Rectangle(190,930,700,120).contains(x,y)){paused=false;return true;}
-            if(new Rectangle(190,760,700,120).contains(x,y)){game.saves.save(save);game.openMenu();return true;}
+            if(new Rectangle(190,860,700,125).contains(x,y)){paused=false;return true;}
+            if(new Rectangle(190,680,700,125).contains(x,y)){game.saves.save(save);game.openMenu();return true;}
             return true;
         }
         if(shopOpen){ shopClick(x,y); return true; }
+        if(debuffShopOpen){ debuffShopClick(x,y); return true; }
         if(effectShopOpen){ effectShopClick(x,y); return true; }
         if(elementConfigOpen){ elementConfigClick(x,y); return true; }
-        if(new Rectangle(930,28,120,92).contains(x,y)){shopOpen=true;return true;}
-        if(new Rectangle(820,28,100,92).contains(x,y)){elementConfigOpen=true;return true;}
-        if(new Rectangle(25,28,90,92).contains(x,y)){paused=true;return true;}
+        if(new Rectangle(930,24,120,104).contains(x,y)){shopOpen=true;return true;}
+        if(new Rectangle(810,24,104,104).contains(x,y)){elementConfigOpen=true;return true;}
+        if(new Rectangle(690,24,104,104).contains(x,y)){debuffShopOpen=true;shopSellMode=false;return true;}
+        if(new Rectangle(20,24,104,104).contains(x,y)){paused=true;return true;}
         if(tryCollectBonus(x,y)) return true;
         if(tryRepairTurret(x,y)) return true;
         return false;
@@ -212,8 +214,8 @@ public class GameScreen extends ScreenAdapter {
 
     @Override public void render(float delta){
         float d=Math.min(delta,0.05f);
-        if(!paused&&!shopOpen&&!elementConfigOpen&&!effectShopOpen&&!defeated) update(d);
-        else if((shopOpen||elementConfigOpen||effectShopOpen)&&!defeated) updateEconomyOnly(d);
+        if(!paused&&!shopOpen&&!debuffShopOpen&&!elementConfigOpen&&!effectShopOpen&&!defeated) update(d);
+        else if((shopOpen||debuffShopOpen||elementConfigOpen||effectShopOpen)&&!defeated) updateEconomyOnly(d);
         draw();
     }
 
@@ -233,7 +235,7 @@ public class GameScreen extends ScreenAdapter {
         if(bossActive){ bossTimer-=d; if(bossTimer<=0 && bossEnemy!=null && !bossEnemy.dead){ save.integrity=0; defeat(); } }
         if(waveClock>=35f){
             waveClock-=35f; save.wave++;
-            banner=game.assets.t("wave_incoming")+"  "+save.wave;bannerTime=2.2f;game.assets.play(game.assets.wave,game.settings,.55f);vibrate(45);
+            banner=game.assets.t("wave")+"  "+save.wave;bannerTime=2.2f;game.assets.play(game.assets.wave,game.settings,.55f);vibrate(45);
             if(save.wave%5==0) spawnBoss();
         }
 
@@ -274,13 +276,13 @@ public class GameScreen extends ScreenAdapter {
 
     private void spawnEnemy(boolean boss){
         Enemy e=new Enemy();
-        if(boss){ e.kind=EnemyKind.BOSS;e.r=118;e.maxHp=(1800+save.wave*480)*save.enemyValueMultiplier();e.speed=11;e.reward=(900+save.wave*90)*save.creditMultiplier(); }
+        if(boss){ e.kind=EnemyKind.BOSS;e.r=118;e.maxHp=(1800+save.wave*480)*save.enemyHealthMultiplier();e.speed=11;e.reward=(900+save.wave*90)*save.creditMultiplier(); }
         else {
             float q=MathUtils.random();
-            if(q<.09f+save.wave*.002f){e.kind=EnemyKind.ELITE;e.r=46;e.maxHp=(95+save.wave*10)*save.enemyValueMultiplier();e.speed=23;e.reward=(42+save.wave*3)*save.creditMultiplier();}
-            else if(q<.23f){e.kind=EnemyKind.TANK;e.r=38;e.maxHp=(60+save.wave*7)*save.enemyValueMultiplier();e.speed=18;e.reward=(28+save.wave*2.2f)*save.creditMultiplier();}
-            else if(q<.43f){e.kind=EnemyKind.FAST;e.r=17;e.maxHp=(13+save.wave*2.0f)*save.enemyValueMultiplier();e.speed=52;e.reward=(8+save.wave*.9f)*save.creditMultiplier();}
-            else {e.kind=EnemyKind.NORMAL;e.r=25;e.maxHp=(25+save.wave*3.2f)*save.enemyValueMultiplier();e.speed=31;e.reward=(13+save.wave*1.2f)*save.creditMultiplier();}
+            if(q<.09f+save.wave*.002f){e.kind=EnemyKind.ELITE;e.r=46;e.maxHp=(95+save.wave*10)*save.enemyHealthMultiplier();e.speed=23;e.reward=(42+save.wave*3)*save.creditMultiplier();}
+            else if(q<.23f){e.kind=EnemyKind.TANK;e.r=38;e.maxHp=(60+save.wave*7)*save.enemyHealthMultiplier();e.speed=18;e.reward=(28+save.wave*2.2f)*save.creditMultiplier();}
+            else if(q<.43f){e.kind=EnemyKind.FAST;e.r=17;e.maxHp=(13+save.wave*2.0f)*save.enemyHealthMultiplier();e.speed=52;e.reward=(8+save.wave*.9f)*save.creditMultiplier();}
+            else {e.kind=EnemyKind.NORMAL;e.r=25;e.maxHp=(25+save.wave*3.2f)*save.enemyHealthMultiplier();e.speed=31;e.reward=(13+save.wave*1.2f)*save.creditMultiplier();}
         }
         e.speed*=save.enemySpeedMultiplier();
         e.hp=e.maxHp;e.x=MathUtils.random(75f,W-75f);e.y=boss?1660f:H+e.r;e.attackCd=MathUtils.random(1.2f,3.6f);enemies.add(e);
@@ -299,7 +301,7 @@ public class GameScreen extends ScreenAdapter {
             else if(e.slowTime>0){e.slowTime-=d;} else {e.slow=1f;e.chill=Math.max(0,e.chill-d*.45f);}
             e.y-=e.speed*e.slow*d;
             e.attackCd-=d;
-            if(e.attackCd<=0 && (e.kind==EnemyKind.BOSS || e.y<920)) { e.attackCd=MathUtils.random(2f,4.2f); enemyAttack(e); }
+            if(e.attackCd<=0 && (e.kind==EnemyKind.BOSS || e.y<920 || hasDroneNear(e.x,e.y,430f))) { e.attackCd=MathUtils.random(2f,4.2f); enemyAttack(e); }
             if(e.y-e.r<=GROUND_Y){
                 save.integrity-=e.kind==EnemyKind.BOSS?60:(e.kind==EnemyKind.ELITE?13:e.kind==EnemyKind.TANK?9:5);
                 explode(e.x,e.y,colorFor(e),e.kind==EnemyKind.BOSS?55:22);e.dead=true;
@@ -309,18 +311,18 @@ public class GameScreen extends ScreenAdapter {
 
     private void enemyAttack(Enemy e){
         if(turrets.size+drones.size==0)return;
-        float dmg=e.kind==EnemyKind.BOSS?18f:e.kind==EnemyKind.ELITE?7f:3.5f;
+        float dmg=(e.kind==EnemyKind.BOSS?18f:e.kind==EnemyKind.ELITE?7f:3.5f)*save.enemyDamageMultiplier();
         HostileProjectile p=new HostileProjectile();p.x=e.x;p.y=e.y;p.damage=dmg;p.r=e.kind==EnemyKind.BOSS?10f:7f;
-        boolean targetDrone=drones.size>0 && MathUtils.randomBoolean(.48f);
-        if(targetDrone){
-            Drone d=null;for(int tries=0;tries<drones.size;tries++){Drone q=drones.get(MathUtils.random(drones.size-1));if(q.alive){d=q;break;}}
-            if(d==null)return;p.droneTarget=d;setHostileVelocity(p,d.x,d.y,e.kind==EnemyKind.BOSS?520f:420f);
-        }else if(turrets.size>0){
-            Turret t=null;for(int tries=0;tries<turrets.size;tries++){Turret q=turrets.get(MathUtils.random(turrets.size-1));if(!q.broken){t=q;break;}}
-            if(t==null)return;p.turretTarget=t;setHostileVelocity(p,t.x,t.y,e.kind==EnemyKind.BOSS?520f:420f);
-        }else return;
-        hostileProjectiles.add(p);
+        // Drones deliberately draw fire when they enter the enemy's local combat bubble.
+        Drone nearestDrone=null;float droneBest=430f*430f;
+        for(int i=0;i<drones.size;i++){Drone q=drones.get(i);if(!q.alive)continue;float ds=dist2(e.x,e.y,q.x,q.y);if(ds<droneBest){droneBest=ds;nearestDrone=q;}}
+        if(nearestDrone!=null){p.droneTarget=nearestDrone;setHostileVelocity(p,nearestDrone.x,nearestDrone.y,e.kind==EnemyKind.BOSS?520f:420f);hostileProjectiles.add(p);return;}
+        Turret nearestTurret=null;float turretBest=99999999f;
+        for(int i=0;i<turrets.size;i++){Turret q=turrets.get(i);if(q.broken)continue;float ds=dist2(e.x,e.y,q.x,q.y);if(ds<turretBest){turretBest=ds;nearestTurret=q;}}
+        if(nearestTurret!=null){p.turretTarget=nearestTurret;setHostileVelocity(p,nearestTurret.x,nearestTurret.y,e.kind==EnemyKind.BOSS?520f:420f);hostileProjectiles.add(p);}
     }
+
+    private boolean hasDroneNear(float x,float y,float radius){float r2=radius*radius;for(int i=0;i<drones.size;i++){Drone d=drones.get(i);if(d.alive&&dist2(x,y,d.x,d.y)<r2)return true;}return false;}
 
     private void setHostileVelocity(HostileProjectile p,float tx,float ty,float speed){
         float dx=tx-p.x,dy=ty-p.y,len=(float)Math.sqrt(dx*dx+dy*dy);if(len<1f)len=1f;p.vx=dx/len*speed;p.vy=dy/len*speed;
@@ -600,7 +602,7 @@ public class GameScreen extends ScreenAdapter {
     private void chainLightning(Enemy from,float dmg,int jumps){Enemy cur=from;Array<Enemy> used=new Array<>();used.add(from);for(int j=0;j<jumps;j++){Enemy next=null;float best=230*230;for(Enemy e:enemies){if(e.dead||used.contains(e,true))continue;float d=dist2(cur.x,cur.y,e.x,e.y);if(d<best){best=d;next=e;}}if(next==null)break;beam(cur.x,cur.y,next.x,next.y,ELEC,5,0.15f);damageRaw(next,dmg*(1f-j*.13f));used.add(next);cur=next;}}
 
     private void killEnemy(Enemy e){
-        e.dead=true;save.credits+=e.reward;save.totalKills++;if(e.kind==EnemyKind.BOSS){save.totalBossKills++;bossActive=false;bossEnemy=null;bossTimer=0;banner="BOSS DESTROYED";bannerTime=2.5f;}
+        e.dead=true;save.credits+=e.reward;save.totalKills++;if(e.kind==EnemyKind.BOSS){save.totalBossKills++;bossActive=false;bossEnemy=null;bossTimer=0;banner=game.assets.t("boss_destroyed");bannerTime=2.5f;}
         explode(e.x,e.y,colorFor(e),e.kind==EnemyKind.BOSS?65:(e.kind==EnemyKind.TANK||e.kind==EnemyKind.ELITE?30:16));game.assets.play(e.kind==EnemyKind.BOSS?game.assets.explosion:game.assets.pop,game.settings,e.kind==EnemyKind.BOSS?.55f:.09f);if(e.kind==EnemyKind.BOSS)vibrate(120);
     }
 
@@ -638,6 +640,7 @@ public class GameScreen extends ScreenAdapter {
         drawHud();
         if(bannerTime>0)drawBanner();
         if(shopOpen)drawShop();
+        if(debuffShopOpen)drawDebuffShop();
         if(effectShopOpen)drawEffectShop();
         if(elementConfigOpen)drawElementConfig();
         if(paused)drawPause();
@@ -645,9 +648,23 @@ public class GameScreen extends ScreenAdapter {
     }
 
     private void drawBackground(){
-        sr.setColor(.008f,.014f,.035f,1);sr.rect(0,0,W,H);
-        sr.setColor(.03f,.15f,.25f,.13f);for(int x=0;x<=W;x+=90)sr.rect(x,GROUND_Y,1,H-GROUND_Y);for(int y=(int)GROUND_Y;y<H;y+=90)sr.rect(0,y,W,1);
-        sr.setColor(.05f,.65f,1f,.035f);sr.circle(540,80,620,64);
+        sr.setColor(.004f,.008f,.028f,1);sr.rect(0,0,W,H);
+        // Deep-space haze / nebula. Deliberately subtle so combat stays readable.
+        sr.setColor(.10f,.02f,.24f,.075f);sr.circle(1650,1450,980,72);
+        sr.setColor(.015f,.19f,.34f,.065f);sr.circle(-480,980,820,72);
+        sr.setColor(.08f,.30f,.42f,.035f);sr.circle(520,1720,520,64);
+        float time=save.playSeconds*.7f;
+        for(int i=0;i<105;i++){
+            float x=(i*197f+37f)%W;
+            float y=(i*431f+83f-time*(.22f+(i%5)*.06f))%(H-GROUND_Y);
+            if(y<0)y+=H-GROUND_Y;y+=GROUND_Y;
+            float sz=1.1f+(i%4)*.65f;
+            float tw=.30f+.22f*MathUtils.sin(save.playSeconds*(.7f+(i%7)*.09f)+i*2.17f);
+            sr.setColor(i%9==0?.45f:.62f,i%11==0?.62f:.83f,1f,MathUtils.clamp(tw,.12f,.72f));sr.circle(x,y,sz,8);
+        }
+        // A few distant colored stars.
+        for(int i=0;i<13;i++){float x=(i*83f+113f)%W,y=GROUND_Y+((i*247f+660f)%(H-GROUND_Y-120));sr.setColor(.25f,.72f,1f,.12f);sr.circle(x,y,7f+(i%3)*4f,18);}
+        sr.setColor(.05f,.65f,1f,.028f);sr.circle(540,80,620,64);
     }
     private void drawGround(){sr.setColor(.04f,.55f,.9f,.18f);sr.rect(0,0,W,GROUND_Y);sr.setColor(Ui.CYAN);sr.rect(0,GROUND_Y,W,3);}
 
@@ -784,62 +801,95 @@ public class GameScreen extends ScreenAdapter {
         float integrity=MathUtils.clamp(save.integrity/100f,0f,1f);
         float progress=bossActive&&bossEnemy!=null?MathUtils.clamp(bossEnemy.hp/bossEnemy.maxHp,0f,1f):MathUtils.clamp(waveClock/35f,0f,1f);
         sr.begin(ShapeRenderer.ShapeType.Filled);
-        // Thin wave/boss meter on the far right.
-        sr.setColor(.02f,.05f,.08f,.55f);sr.rect(W-20,310,9,1260);
-        sr.setColor(bossActive?Ui.RED:Ui.CYAN);sr.rect(W-20,310,9,1260*progress);
-        // Planet integrity: larger segmented energy bar along the bottom.
-        float bx=244,by=104,bw=592,bh=26;Color hc=integrity>.55f?Ui.GREEN:(integrity>.28f?Ui.GOLD:Ui.RED);
-        sr.setColor(hc.r,hc.g,hc.b,.08f);sr.rect(bx-14,by-12,bw+28,bh+24);
-        sr.setColor(.012f,.035f,.055f,.98f);sr.rect(bx-8,by-7,bw+16,bh+14);sr.circle(bx,by+bh*.5f,bh*.7f,24);sr.circle(bx+bw,by+bh*.5f,bh*.7f,24);
+        // Wave / boss progress belongs to enemies, so it lives at the very top edge.
+        float wx=28,wy=1886,ww=1024,wh=13;Color wc=bossActive?Ui.RED:Ui.CYAN;
+        sr.setColor(.015f,.035f,.055f,.88f);sr.rect(wx,wy,ww,wh);
+        sr.setColor(wc.r,wc.g,wc.b,.22f);sr.rect(wx-2,wy-3,ww*progress+4,wh+6);sr.setColor(wc);sr.rect(wx,wy,ww*progress,wh);
+        // Planet integrity at the bottom.
+        float bx=215,by=112,bw=650,bh=31;Color hc=integrity>.55f?Ui.GREEN:(integrity>.28f?Ui.GOLD:Ui.RED);
+        sr.setColor(hc.r,hc.g,hc.b,.08f);sr.rect(bx-16,by-13,bw+32,bh+26);
+        sr.setColor(.012f,.035f,.055f,.98f);sr.rect(bx-8,by-7,bw+16,bh+14);sr.circle(bx,by+bh*.5f,bh*.72f,24);sr.circle(bx+bw,by+bh*.5f,bh*.72f,24);
         sr.setColor(.04f,.10f,.14f,.96f);sr.rect(bx,by,bw,bh);
-        sr.setColor(hc.r,hc.g,hc.b,.22f);sr.rect(bx-4,by-4,(bw+8)*integrity,bh+8);sr.setColor(hc);sr.rect(bx,by,bw*integrity,bh);
-        sr.setColor(1,1,1,.48f);sr.rect(bx,by+bh-4,bw*integrity,4);
-        sr.setColor(.01f,.035f,.055f,.8f);for(int i=1;i<10;i++)sr.rect(bx+bw*i/10f-2,by,4,bh);
-        // Larger but still frameless pause and round action buttons.
-        sr.setColor(1,1,1,.72f);sr.rect(45,54,9,48);sr.rect(66,54,9,48);
-        sr.setColor(.01f,.04f,.075f,.72f);sr.circle(866,80,46,32);sr.circle(986,80,46,32);
-        sr.setColor(Ui.CYAN.r,Ui.CYAN.g,Ui.CYAN.b,.14f);sr.circle(866,80,51,32);sr.circle(986,80,51,32);
+        sr.setColor(hc.r,hc.g,hc.b,.24f);sr.rect(bx-4,by-4,(bw+8)*integrity,bh+8);sr.setColor(hc);sr.rect(bx,by,bw*integrity,bh);
+        sr.setColor(1,1,1,.46f);sr.rect(bx,by+bh-4,bw*integrity,4);sr.setColor(.01f,.035f,.055f,.8f);for(int i=1;i<10;i++)sr.rect(bx+bw*i/10f-2,by,4,bh);
+        // Bottom action buttons, slightly larger.
+        sr.setColor(1,1,1,.76f);sr.rect(42,51,10,54);sr.rect(68,51,10,54);
+        float[] cx={742,862,982};for(float c:cx){sr.setColor(.01f,.04f,.075f,.76f);sr.circle(c,82,49,32);sr.setColor(Ui.CYAN.r,Ui.CYAN.g,Ui.CYAN.b,.15f);sr.circle(c,82,54,32);}
         sr.end();
         batch.begin();
         String creditText=BuildFlags.TEST_MODE?"C ∞":"C "+(long)save.credits;
-        Ui.text(batch,game.assets.font,creditText,112,119,.72f,Ui.GOLD);
-        Ui.text(batch,game.assets.font,"+"+String.format(java.util.Locale.US,"%.1f",save.passiveIncomePerSecond())+"/s",126,68,.44f,new Color(.58f,.82f,.92f,.9f));
-        Ui.text(batch,game.assets.font,Math.max(0,(int)save.integrity)+"%",492,116,.44f,Color.WHITE);
-        Ui.text(batch,game.assets.font,bossActive?String.format(java.util.Locale.US,"%.0fs",bossTimer):("W"+save.wave),974,286,.36f,bossActive?Ui.RED:Ui.CYAN);
-        if(overdriveTime>0)Ui.text(batch,game.assets.font,"BOOST "+String.format(java.util.Locale.US,"%.0fs",overdriveTime),112,157,.32f,ELEC);
-        Texture cfg=game.assets.icon("config");if(cfg!=null)batch.draw(cfg,832,46,68,68);
-        Texture shp=game.assets.icon("shop_button");if(shp!=null)batch.draw(shp,952,46,68,68);
+        Ui.text(batch,game.assets.font,creditText,112,127,.82f,Ui.GOLD);
+        Ui.text(batch,game.assets.font,"+"+String.format(java.util.Locale.US,"%.1f",save.passiveIncomePerSecond())+"/s",124,72,.52f,new Color(.58f,.82f,.92f,.94f));
+        Ui.text(batch,game.assets.font,Math.max(0,(int)save.integrity)+"%",500,128,.50f,Color.WHITE);
+        if(bossActive)Ui.text(batch,game.assets.font,String.format(java.util.Locale.US,"%.0fs",bossTimer),910,1847,.42f,Ui.RED);
+        if(overdriveTime>0)Ui.text(batch,game.assets.font,"BOOST "+String.format(java.util.Locale.US,"%.0fs",overdriveTime),112,174,.38f,ELEC);
+        Texture deb=game.assets.icon("debuff_button");if(deb!=null)batch.draw(deb,708,48,68,68);
+        Texture cfg=game.assets.icon("config");if(cfg!=null)batch.draw(cfg,828,48,68,68);
+        Texture shp=game.assets.icon("shop_button");if(shp!=null)batch.draw(shp,948,48,68,68);
         batch.end();
     }
+    private void drawBanner(){
+        boolean boss=banner.toUpperCase(java.util.Locale.ROOT).contains("BOSS")||banner.toUpperCase(java.util.Locale.ROOT).contains("БОСС");
+        Rectangle r=new Rectangle(90,1370,900,190);
+        sr.begin(ShapeRenderer.ShapeType.Filled);Color c=boss?Ui.RED:Ui.CYAN;sr.setColor(c.r,c.g,c.b,.055f);sr.rect(r.x,r.y,r.width,r.height);sr.setColor(c.r,c.g,c.b,.24f);sr.rect(r.x+120,r.y+18,r.width-240,3);sr.rect(r.x+120,r.y+r.height-21,r.width-240,3);sr.end();
+        batch.begin();Ui.centered(batch,game.assets.font,banner,r,boss?1.16f:1.28f,boss?Ui.RED:Color.WHITE);batch.end();
+    }
 
-    private void drawBanner(){Rectangle r=new Rectangle(110,1430,860,120);sr.begin(ShapeRenderer.ShapeType.Filled);Ui.panel(sr,r,banner.contains("BOSS")?Ui.RED:Ui.CYAN);sr.end();batch.begin();Ui.centered(batch,game.assets.font,banner,r,.76f,banner.contains("BOSS")?Ui.RED:Color.WHITE);batch.end();}
-
-    private void drawPause(){drawOverlay();Rectangle p=new Rectangle(160,650,760,520);sr.begin(ShapeRenderer.ShapeType.Filled);Ui.panel(sr,p,Ui.CYAN);sr.end();batch.begin();Ui.text(batch,game.assets.font,game.assets.t("pause"),430,1090,1f,Color.WHITE);batch.end();drawOverlayButton(new Rectangle(190,930,700,120),game.assets.t("resume"),true);drawOverlayButton(new Rectangle(190,760,700,120),game.assets.t("main_menu"),true);}
+    private void drawPause(){drawOverlay();Rectangle p=new Rectangle(150,600,780,650);sr.begin(ShapeRenderer.ShapeType.Filled);Ui.panel(sr,p,Ui.CYAN);sr.end();batch.begin();Ui.centered(batch,game.assets.font,game.assets.t("pause"),new Rectangle(190,1100,700,105),1.18f,Color.WHITE);batch.end();drawOverlayButton(new Rectangle(190,860,700,125),game.assets.t("resume"),true);drawOverlayButton(new Rectangle(190,680,700,125),game.assets.t("main_menu"),true);}
     private void drawDefeat(){drawOverlay();Rectangle p=new Rectangle(140,430,800,620);sr.begin(ShapeRenderer.ShapeType.Filled);Ui.panel(sr,p,Ui.RED);sr.end();batch.begin();Ui.text(batch,game.assets.font,game.assets.t("defeat"),380,970,1.05f,Ui.RED);Ui.text(batch,game.assets.font,game.assets.t("wave")+" "+save.wave+"   •   Kills "+save.totalKills,325,870,.5f,Color.WHITE);batch.end();drawOverlayButton(new Rectangle(190,690,700,120),game.assets.t("restart"),true);drawOverlayButton(new Rectangle(190,520,700,120),game.assets.t("main_menu"),true);}
     private void drawOverlay(){sr.begin(ShapeRenderer.ShapeType.Filled);sr.setColor(0,0,0,.72f);sr.rect(0,0,W,H);sr.end();}
-    private void drawOverlayButton(Rectangle r,String text,boolean enabled){sr.begin(ShapeRenderer.ShapeType.Filled);Ui.button(sr,r,enabled,false);sr.end();batch.begin();Ui.centered(batch,game.assets.font,text,r,.72f,Color.WHITE);batch.end();}
+    private void drawOverlayButton(Rectangle r,String text,boolean enabled){sr.begin(ShapeRenderer.ShapeType.Filled);Ui.button(sr,r,enabled,false);sr.end();batch.begin();Ui.centered(batch,game.assets.font,text,r,.82f,Color.WHITE);batch.end();}
 
     private void drawShop(){
         drawOverlay();
         Rectangle panel=new Rectangle(40,125,1000,1660);sr.begin(ShapeRenderer.ShapeType.Filled);Ui.panel(sr,panel,Ui.CYAN);sr.end();
-        batch.begin();Ui.text(batch,game.assets.font,game.assets.t("shop"),72,1720,.90f,Color.WHITE);Ui.text(batch,game.assets.font,BuildFlags.TEST_MODE?"C ∞":"C "+(long)save.credits,752,1718,.58f,Ui.GOLD);batch.end();
+        batch.begin();Ui.text(batch,game.assets.font,game.assets.t("shop"),72,1720,1.06f,Color.WHITE);Ui.text(batch,game.assets.font,BuildFlags.TEST_MODE?"C ∞":"C "+(long)save.credits,742,1718,.72f,Ui.GOLD);batch.end();
         String[] tabs={game.assets.t("general"),game.assets.t("finger"),game.assets.t("turrets"),game.assets.t("drones")};String[] tabIcons={"tab_general","tab_finger","tab_turrets","tab_drones"};
-        for(int i=0;i<tabs.length;i++){Rectangle r=new Rectangle(68+i*238,1540,220,100);sr.begin(ShapeRenderer.ShapeType.Filled);Ui.button(sr,r,true,i==shopTab);sr.end();batch.begin();Texture ti=game.assets.icon(tabIcons[i]);if(ti!=null)batch.draw(ti,r.x+55,r.y+28,70,70);Ui.centered(batch,game.assets.font,tabs[i],new Rectangle(r.x,r.y-34,r.width,46),.36f,Color.WHITE);batch.end();}
+        for(int i=0;i<tabs.length;i++){Rectangle r=new Rectangle(68+i*238,1540,220,100);sr.begin(ShapeRenderer.ShapeType.Filled);Ui.button(sr,r,true,i==shopTab);sr.end();batch.begin();Texture ti=game.assets.icon(tabIcons[i]);if(ti!=null)batch.draw(ti,r.x+55,r.y+28,70,70);Ui.centered(batch,game.assets.font,tabs[i],new Rectangle(r.x,r.y-38,r.width,50),.43f,Color.WHITE);batch.end();}
         Array<ShopEntry> list=shopEntries();int shown=Math.min(10,list.size);
         for(int i=0;i<shown;i++){
             ShopEntry e=list.get(i);int col=i%2,row=i/2;Rectangle r=new Rectangle(70+col*478,1310-row*230,456,204);boolean active=shopSellMode?canSell(e):e.enabled;
             sr.begin(ShapeRenderer.ShapeType.Filled);Ui.button(sr,r,active,false);sr.end();batch.begin();
             Texture icon=game.assets.icon(e.id);if(icon!=null){batch.setColor(1,1,1,active?1f:.36f);batch.draw(icon,r.x+16,r.y+39,122,122);batch.setColor(Color.WHITE);}
-            Color tc=active?Color.WHITE:new Color(.5f,.53f,.58f,1);Ui.text(batch,game.assets.font,shopShortLabel(e),r.x+148,r.y+154,.46f,tc);Ui.text(batch,game.assets.font,shopLevelText(e),r.x+148,r.y+101,.37f,new Color(.6f,.78f,.9f,active?1f:.65f));
+            Color tc=active?Color.WHITE:new Color(.5f,.53f,.58f,1);Ui.text(batch,game.assets.font,shopShortLabel(e),r.x+148,r.y+158,.55f,tc);Ui.text(batch,game.assets.font,shopLevelText(e),r.x+148,r.y+101,.44f,new Color(.6f,.78f,.9f,active?1f:.65f));
             String price;if(shopSellMode){long refund=refundFor(e);price=active?game.assets.t("sell_refund")+" C "+refund:game.assets.t("not_sellable");}else price=e.cost<=0?game.assets.t("max"):(e.cost>=Long.MAX_VALUE/4?game.assets.t("locked"):"C "+e.cost);
-            Ui.text(batch,game.assets.font,price,r.x+148,r.y+48,.40f,shopSellMode?Ui.GREEN:(active?Ui.GOLD:new Color(.45f,.35f,.2f,1)));batch.end();
+            Ui.text(batch,game.assets.font,price,r.x+148,r.y+45,.47f,shopSellMode?Ui.GREEN:(active?Ui.GOLD:new Color(.45f,.35f,.2f,1)));batch.end();
         }
         drawOverlayButton(new Rectangle(74,174,250,96),shopSellMode?game.assets.t("buy_mode"):game.assets.t("sell_mode"),true);drawOverlayButton(new Rectangle(350,174,380,96),game.assets.t("close"),true);
     }
 
+    private Array<ShopEntry> debuffEntries(){
+        Array<ShopEntry>a=new Array<>();
+        a.add(entry("density",game.assets.t("density")+"  Lv."+save.densityLevel,cost(90,1.65,save.densityLevel),true));
+        a.add(entry("spawn",game.assets.t("spawn_rate")+"  Lv."+save.spawnRateLevel,cost(100,1.68,save.spawnRateLevel),true));
+        a.add(entry("value",game.assets.t("enemy_value")+"  Lv."+save.enemyValueLevel,cost(120,1.70,save.enemyValueLevel),true));
+        a.add(entry("enemySpeed",game.assets.t("enemy_speed")+"  Lv."+save.enemySpeedLevel,cost(110,1.72,save.enemySpeedLevel),true));
+        a.add(entry("enemyDamage",game.assets.t("enemy_damage")+"  Lv."+save.enemyDamageLevel,cost(125,1.74,save.enemyDamageLevel),true));
+        a.add(entry("enemyHealth",game.assets.t("enemy_health")+"  Lv."+save.enemyHealthLevel,cost(125,1.74,save.enemyHealthLevel),true));
+        return a;
+    }
+
+    private void drawDebuffShop(){
+        drawOverlay();Rectangle panel=new Rectangle(70,300,940,1320);sr.begin(ShapeRenderer.ShapeType.Filled);Ui.panel(sr,panel,Ui.RED);sr.end();
+        batch.begin();Ui.text(batch,game.assets.font,game.assets.t("debuffs"),110,1540,1.08f,Color.WHITE);Ui.text(batch,game.assets.font,BuildFlags.TEST_MODE?"C ∞":"C "+(long)save.credits,745,1538,.72f,Ui.GOLD);Ui.text(batch,game.assets.font,game.assets.t("passive")+" +"+String.format(java.util.Locale.US,"%.1f",save.passiveIncomePerSecond())+"/s",110,1472,.51f,new Color(.70f,.86f,.94f,1));batch.end();
+        Array<ShopEntry> list=debuffEntries();
+        for(int i=0;i<list.size;i++){
+            ShopEntry e=list.get(i);int col=i%2,row=i/2;Rectangle r=new Rectangle(105+col*445,1190-row*250,420,220);boolean active=shopSellMode?canSell(e):e.enabled;
+            sr.begin(ShapeRenderer.ShapeType.Filled);Ui.button(sr,r,active,false);sr.end();batch.begin();Texture icon=game.assets.icon(e.id);if(icon!=null){batch.setColor(1,1,1,active?1f:.38f);batch.draw(icon,r.x+18,r.y+50,116,116);batch.setColor(Color.WHITE);}Color tc=active?Color.WHITE:new Color(.5f,.53f,.58f,1);Ui.text(batch,game.assets.font,shopShortLabel(e),r.x+145,r.y+170,.56f,tc);Ui.text(batch,game.assets.font,shopLevelText(e),r.x+145,r.y+112,.46f,new Color(.65f,.80f,.92f,active?1f:.65f));String price;if(shopSellMode){long refund=refundFor(e);price=active?game.assets.t("sell_refund")+" C "+refund:game.assets.t("not_sellable");}else price=BuildFlags.TEST_MODE?"C 0":"C "+e.cost;Ui.text(batch,game.assets.font,price,r.x+145,r.y+55,.48f,shopSellMode?Ui.GREEN:Ui.GOLD);batch.end();
+        }
+        drawOverlayButton(new Rectangle(130,355,310,105),shopSellMode?game.assets.t("buy_mode"):game.assets.t("sell_mode"),true);
+        drawOverlayButton(new Rectangle(530,355,420,105),game.assets.t("close"),true);
+    }
+
+    private void debuffShopClick(float x,float y){
+        if(new Rectangle(530,355,420,105).contains(x,y)){debuffShopOpen=false;shopSellMode=false;game.saves.save(save);return;}
+        if(new Rectangle(130,355,310,105).contains(x,y)){shopSellMode=!shopSellMode;return;}
+        Array<ShopEntry> list=debuffEntries();for(int i=0;i<list.size;i++){int col=i%2,row=i/2;Rectangle r=new Rectangle(105+col*445,1190-row*250,420,220);if(r.contains(x,y)){if(shopSellMode)sell(list.get(i));else buy(list.get(i));return;}}
+    }
+
     private void drawEffectShop(){
         drawOverlay();Rectangle p=new Rectangle(115,420,850,1010);sr.begin(ShapeRenderer.ShapeType.Filled);Ui.panel(sr,p,ELEC);sr.end();
-        batch.begin();Ui.text(batch,game.assets.font,game.assets.t("effect_shop"),300,1340,.92f,Color.WHITE);Ui.text(batch,game.assets.font,BuildFlags.TEST_MODE?"C ∞":"C "+(long)save.credits,720,1340,.56f,Ui.GOLD);batch.end();
+        batch.begin();Ui.text(batch,game.assets.font,game.assets.t("effect_shop"),270,1340,1.04f,Color.WHITE);Ui.text(batch,game.assets.font,BuildFlags.TEST_MODE?"C ∞":"C "+(long)save.credits,710,1340,.68f,Ui.GOLD);batch.end();
         drawEffectCard(new Rectangle(180,1030,720,190),"fire",game.assets.t("fire"),save.fireUnlocked,500);
         drawEffectCard(new Rectangle(180,800,720,190),"ice",game.assets.t("ice"),save.iceUnlocked,850);
         drawEffectCard(new Rectangle(180,570,720,190),"lightning",game.assets.t("lightning"),save.lightningUnlocked,1400);
@@ -847,7 +897,7 @@ public class GameScreen extends ScreenAdapter {
     }
 
     private void drawEffectCard(Rectangle r,String iconName,String title,boolean unlocked,long cost){
-        sr.begin(ShapeRenderer.ShapeType.Filled);Ui.button(sr,r,!unlocked,false);sr.end();batch.begin();Texture ic=game.assets.icon(iconName);if(ic!=null)batch.draw(ic,r.x+30,r.y+35,120,120);Ui.text(batch,game.assets.font,title,r.x+180,r.y+132,.64f,unlocked?Ui.GREEN:Color.WHITE);Ui.text(batch,game.assets.font,unlocked?game.assets.t("max"):(BuildFlags.TEST_MODE?"C 0":"C "+cost),r.x+180,r.y+68,.48f,unlocked?Ui.GREEN:Ui.GOLD);batch.end();
+        sr.begin(ShapeRenderer.ShapeType.Filled);Ui.button(sr,r,!unlocked,false);sr.end();batch.begin();Texture ic=game.assets.icon(iconName);if(ic!=null)batch.draw(ic,r.x+30,r.y+35,120,120);Ui.text(batch,game.assets.font,title,r.x+180,r.y+135,.76f,unlocked?Ui.GREEN:Color.WHITE);Ui.text(batch,game.assets.font,unlocked?game.assets.t("max"):(BuildFlags.TEST_MODE?"C 0":"C "+cost),r.x+180,r.y+66,.58f,unlocked?Ui.GREEN:Ui.GOLD);batch.end();
     }
 
     private void effectShopClick(float x,float y){
@@ -866,7 +916,7 @@ public class GameScreen extends ScreenAdapter {
         drawOverlay();
         Rectangle panel=new Rectangle(85,220,910,1320);
         sr.begin(ShapeRenderer.ShapeType.Filled);Ui.panel(sr,panel,Ui.CYAN);sr.end();
-        batch.begin();Ui.text(batch,game.assets.font,game.assets.t("effect_setup"),235,1460,.92f,Color.WHITE);batch.end();
+        batch.begin();Ui.text(batch,game.assets.font,game.assets.t("effect_setup"),210,1460,1.04f,Color.WHITE);batch.end();
         drawElementRow(new Rectangle(150,1230,780,155),"tab_finger",game.assets.t("finger_element"),save.fingerElement,true);
         drawElementRow(new Rectangle(150,1045,780,155),"tab_turrets",game.assets.t("turret_element"),save.turretElement,false);
         drawWeaponRow(new Rectangle(150,860,780,155));
@@ -881,9 +931,9 @@ public class GameScreen extends ScreenAdapter {
         batch.begin();
         Texture sIcon=game.assets.icon(sourceIcon);if(sIcon!=null)batch.draw(sIcon,r.x+20,r.y+32,98,98);
         Texture eIcon=game.assets.icon(elementIconName(element));if(eIcon!=null)batch.draw(eIcon,r.x+r.width-126,r.y+33,96,96);
-        Ui.text(batch,game.assets.font,title,r.x+138,r.y+113,.58f,Color.WHITE);
-        Ui.text(batch,game.assets.font,elementName(element),r.x+138,r.y+55,.48f,elementColor(element));
-        Ui.text(batch,game.assets.font,game.assets.t("tap_to_change"),r.x+430,r.y+55,.34f,new Color(.62f,.75f,.86f,1));
+        Ui.text(batch,game.assets.font,title,r.x+138,r.y+116,.68f,Color.WHITE);
+        Ui.text(batch,game.assets.font,elementName(element),r.x+138,r.y+55,.57f,elementColor(element));
+        Ui.text(batch,game.assets.font,game.assets.t("tap_to_change"),r.x+420,r.y+53,.40f,new Color(.62f,.75f,.86f,1));
         batch.end();
     }
 
@@ -891,9 +941,9 @@ public class GameScreen extends ScreenAdapter {
         sr.begin(ShapeRenderer.ShapeType.Filled);Ui.button(sr,r,true,false);sr.end();
         batch.begin();Texture src=game.assets.icon("tab_turrets");if(src!=null)batch.draw(src,r.x+20,r.y+32,98,98);
         String iconName=save.turretWeapon==1?"laser":save.turretWeapon==2?"rockets":"buyTurret";Texture wi=game.assets.icon(iconName);if(wi!=null)batch.draw(wi,r.x+r.width-126,r.y+33,96,96);
-        Ui.text(batch,game.assets.font,game.assets.t("turret_weapon"),r.x+138,r.y+113,.58f,Color.WHITE);
-        Ui.text(batch,game.assets.font,turretWeaponName(),r.x+138,r.y+55,.48f,Ui.GOLD);
-        Ui.text(batch,game.assets.font,game.assets.t("tap_to_change"),r.x+430,r.y+55,.34f,new Color(.62f,.75f,.86f,1));batch.end();
+        Ui.text(batch,game.assets.font,game.assets.t("turret_weapon"),r.x+138,r.y+116,.68f,Color.WHITE);
+        Ui.text(batch,game.assets.font,turretWeaponName(),r.x+138,r.y+55,.57f,Ui.GOLD);
+        Ui.text(batch,game.assets.font,game.assets.t("tap_to_change"),r.x+420,r.y+53,.40f,new Color(.62f,.75f,.86f,1));batch.end();
     }
 
     private void elementConfigClick(float x,float y){
@@ -945,6 +995,8 @@ public class GameScreen extends ScreenAdapter {
             case "spawn" -> game.assets.t("spawn_rate");
             case "value" -> game.assets.t("enemy_value");
             case "enemySpeed" -> game.assets.t("enemy_speed");
+            case "enemyDamage" -> game.assets.t("enemy_damage");
+            case "enemyHealth" -> game.assets.t("enemy_health");
             case "plasma" -> game.assets.t("plasma"); case "trail" -> game.assets.t("trail"); case "ultimate" -> game.assets.t("ultimate"); case "gravity" -> game.assets.t("gravity");
             case "buyTurret" -> game.assets.t("turrets"); case "turretShield","droneShield" -> game.assets.t("shield"); case "repairTurrets" -> game.assets.t("repair"); case "autoRepair" -> game.assets.t("auto_repair");
             case "laser" -> game.assets.t("pulse_laser"); case "rockets" -> game.assets.t("rockets"); case "cycleWeapon" -> turretWeaponName(); case "turretPlusTwo" -> "+2 "+game.assets.t("turrets");
@@ -967,10 +1019,6 @@ public class GameScreen extends ScreenAdapter {
             a.add(entry("gDamage",game.assets.t("damage")+"  Lv."+save.generalDamageLevel,cost(80,1.72,save.generalDamageLevel),true));
             a.add(entry("gRate",game.assets.t("rate")+"  Lv."+save.generalRateLevel,cost(110,1.78,save.generalRateLevel),true));
             a.add(entry("yield",game.assets.t("reward")+"  Lv."+save.creditYieldLevel,cost(120,1.75,save.creditYieldLevel),true));
-            a.add(entry("density",game.assets.t("density")+"  Lv."+save.densityLevel,cost(180,1.82,save.densityLevel),true));
-            a.add(entry("spawn",game.assets.t("spawn_rate")+"  Lv."+save.spawnRateLevel,cost(200,1.86,save.spawnRateLevel),true));
-            a.add(entry("value",game.assets.t("enemy_value")+"  Lv."+save.enemyValueLevel,cost(220,1.90,save.enemyValueLevel),true));
-            a.add(entry("enemySpeed",game.assets.t("enemy_speed")+"  Lv."+save.enemySpeedLevel,cost(240,1.92,save.enemySpeedLevel),true));
         } else if(shopTab==1){
             a.add(entry("tapDmg",game.assets.t("tap")+" "+game.assets.t("damage")+"  Lv."+save.tapDamageLevel,cost(70,1.58,save.tapDamageLevel),true));
             a.add(entry("tapRate",game.assets.t("tap")+" "+game.assets.t("rate")+"  Lv."+save.tapSpeedLevel,cost(90,1.62,save.tapSpeedLevel),true));
@@ -979,7 +1027,7 @@ public class GameScreen extends ScreenAdapter {
             a.add(entry("ultimate",save.ultimateUnlocked?game.assets.t("ultimate")+" — "+game.assets.t("max"):game.assets.t("unlock_ultimate"),save.ultimateUnlocked?0:3600,!save.ultimateUnlocked));
             a.add(entry("gravity",save.gravityUnlocked?game.assets.t("gravity")+" — "+game.assets.t("max"):game.assets.t("unlock_gravity"),save.gravityUnlocked?0:12500,!save.gravityUnlocked&&(BuildFlags.TEST_MODE||save.wave>=10)));
         } else if(shopTab==2){
-            a.add(entry("buyTurret",game.assets.t("buy_turret")+"  "+save.turretCount+"/"+save.turretCap(),save.turretCount>=save.turretCap()?0:cost(480,1.65,Math.max(0,save.turretCount-1)),save.turretCount<save.turretCap()));
+            a.add(entry("buyTurret",game.assets.t("buy_turret")+"  "+save.turretCount+"/"+save.turretCap(),save.turretCount>=save.turretCap()?0:cost(360,1.65,Math.max(0,save.turretCount)),save.turretCount<save.turretCap()));
             a.add(entry("turretDmg",game.assets.t("damage")+"  Lv."+save.turretDamageLevel,cost(150,1.68,save.turretDamageLevel),true));
             a.add(entry("turretRate",game.assets.t("rate")+"  Lv."+save.turretRateLevel,cost(170,1.76,save.turretRateLevel),true));
             a.add(entry("turretShield",game.assets.t("shield")+"  Lv."+save.turretShieldLevel,cost(190,1.70,save.turretShieldLevel),true));
@@ -1013,9 +1061,9 @@ public class GameScreen extends ScreenAdapter {
 
     private boolean canSell(ShopEntry e){
         return switch(e.id){
-            case "gDamage"->save.generalDamageLevel>0;case "gRate"->save.generalRateLevel>0;case "yield"->save.creditYieldLevel>0;case "density"->save.densityLevel>0;case "spawn"->save.spawnRateLevel>0;case "value"->save.enemyValueLevel>0;case "enemySpeed"->save.enemySpeedLevel>0;
+            case "gDamage"->save.generalDamageLevel>0;case "gRate"->save.generalRateLevel>0;case "yield"->save.creditYieldLevel>0;case "density"->save.densityLevel>0;case "spawn"->save.spawnRateLevel>0;case "value"->save.enemyValueLevel>0;case "enemySpeed"->save.enemySpeedLevel>0;case "enemyDamage"->save.enemyDamageLevel>0;case "enemyHealth"->save.enemyHealthLevel>0;
             case "tapDmg"->save.tapDamageLevel>0;case "tapRate"->save.tapSpeedLevel>0;case "plasma"->save.plasmaUnlocked;case "trail"->save.trailUnlocked;case "ultimate"->save.ultimateUnlocked;case "gravity"->save.gravityUnlocked&&save.fingerElement!=Element.GRAVITY;
-            case "buyTurret"->save.turretCount>1;case "turretDmg"->save.turretDamageLevel>0;case "turretRate"->save.turretRateLevel>0;case "turretShield"->save.turretShieldLevel>0;case "autoRepair"->save.autoRepairUnlocked;case "laser"->save.turretLaserUnlocked&&save.turretWeapon!=1;case "rockets"->save.turretRocketsUnlocked&&save.turretWeapon!=2;case "turretPlusTwo"->save.turretPlusTwo&&save.turretCount<=5;
+            case "buyTurret"->save.turretCount>0;case "turretDmg"->save.turretDamageLevel>0;case "turretRate"->save.turretRateLevel>0;case "turretShield"->save.turretShieldLevel>0;case "autoRepair"->save.autoRepairUnlocked;case "laser"->save.turretLaserUnlocked&&save.turretWeapon!=1;case "rockets"->save.turretRocketsUnlocked&&save.turretWeapon!=2;case "turretPlusTwo"->save.turretPlusTwo&&save.turretCount<=5;
             case "gunDrone"->save.gunDrones>0;case "missileDrone"->save.missileDrones>0;case "kamikaze"->save.kamikazeDrones>0;case "support"->save.supportDrones>0;case "droneDmg"->save.droneDamageLevel>0;case "droneRate"->save.droneRateLevel>0;case "droneAura"->save.droneAuraLevel>0;case "droneShield"->save.droneShieldLevel>0;case "dronePlusTwo"->save.dronePlusTwo&&save.droneCount()<=11;
             case "fire"->save.fireUnlocked&&save.fingerElement!=Element.FIRE&&save.turretElement!=Element.FIRE&&save.droneElement!=Element.FIRE;case "ice"->save.iceUnlocked&&save.fingerElement!=Element.ICE&&save.turretElement!=Element.ICE&&save.droneElement!=Element.ICE;case "lightning"->save.lightningUnlocked&&save.fingerElement!=Element.LIGHTNING&&save.turretElement!=Element.LIGHTNING&&save.droneElement!=Element.LIGHTNING;
             default->false;
@@ -1024,9 +1072,9 @@ public class GameScreen extends ScreenAdapter {
 
     private long refundFor(ShopEntry e){
         double value=switch(e.id){
-            case "gDamage"->cost(80,1.72,Math.max(0,save.generalDamageLevel-1));case "gRate"->cost(110,1.78,Math.max(0,save.generalRateLevel-1));case "yield"->cost(120,1.75,Math.max(0,save.creditYieldLevel-1));case "density"->cost(180,1.82,Math.max(0,save.densityLevel-1));case "spawn"->cost(200,1.86,Math.max(0,save.spawnRateLevel-1));case "value"->cost(220,1.90,Math.max(0,save.enemyValueLevel-1));case "enemySpeed"->cost(240,1.92,Math.max(0,save.enemySpeedLevel-1));
+            case "gDamage"->cost(80,1.72,Math.max(0,save.generalDamageLevel-1));case "gRate"->cost(110,1.78,Math.max(0,save.generalRateLevel-1));case "yield"->cost(120,1.75,Math.max(0,save.creditYieldLevel-1));case "density"->cost(90,1.65,Math.max(0,save.densityLevel-1));case "spawn"->cost(100,1.68,Math.max(0,save.spawnRateLevel-1));case "value"->cost(120,1.70,Math.max(0,save.enemyValueLevel-1));case "enemySpeed"->cost(110,1.72,Math.max(0,save.enemySpeedLevel-1));case "enemyDamage"->cost(125,1.74,Math.max(0,save.enemyDamageLevel-1));case "enemyHealth"->cost(125,1.74,Math.max(0,save.enemyHealthLevel-1));
             case "tapDmg"->cost(70,1.58,Math.max(0,save.tapDamageLevel-1));case "tapRate"->cost(90,1.62,Math.max(0,save.tapSpeedLevel-1));case "plasma"->650;case "trail"->950;case "ultimate"->3600;case "gravity"->12500;
-            case "buyTurret"->cost(480,1.65,Math.max(0,save.turretCount-2));case "turretDmg"->cost(150,1.68,Math.max(0,save.turretDamageLevel-1));case "turretRate"->cost(170,1.76,Math.max(0,save.turretRateLevel-1));case "turretShield"->cost(190,1.70,Math.max(0,save.turretShieldLevel-1));case "autoRepair"->4200;case "laser"->1600;case "rockets"->2800;case "turretPlusTwo"->22000;
+            case "buyTurret"->cost(360,1.65,Math.max(0,save.turretCount-1));case "turretDmg"->cost(150,1.68,Math.max(0,save.turretDamageLevel-1));case "turretRate"->cost(170,1.76,Math.max(0,save.turretRateLevel-1));case "turretShield"->cost(190,1.70,Math.max(0,save.turretShieldLevel-1));case "autoRepair"->4200;case "laser"->1600;case "rockets"->2800;case "turretPlusTwo"->22000;
             case "gunDrone"->cost(650,1.45,Math.max(0,save.droneCount()-1));case "missileDrone"->Math.max(1100,cost(650,1.45,Math.max(0,save.droneCount()-1))+450);case "kamikaze"->Math.max(1600,cost(650,1.45,Math.max(0,save.droneCount()-1))+850);case "support"->Math.max(2100,cost(650,1.45,Math.max(0,save.droneCount()-1))+1250);case "droneDmg"->cost(180,1.70,Math.max(0,save.droneDamageLevel-1));case "droneRate"->cost(210,1.74,Math.max(0,save.droneRateLevel-1));case "droneAura"->cost(260,1.78,Math.max(0,save.droneAuraLevel-1));case "droneShield"->cost(230,1.70,Math.max(0,save.droneShieldLevel-1));case "dronePlusTwo"->24000;case "fire"->500;case "ice"->850;case "lightning"->1400;default->0;
         };return (long)(value*.60);
     }
@@ -1034,7 +1082,7 @@ public class GameScreen extends ScreenAdapter {
     private void sell(ShopEntry e){
         if(!canSell(e))return;long refund=refundFor(e);save.credits+=refund;
         switch(e.id){
-            case "gDamage"->save.generalDamageLevel--;case "gRate"->save.generalRateLevel--;case "yield"->save.creditYieldLevel--;case "density"->save.densityLevel--;case "spawn"->save.spawnRateLevel--;case "value"->save.enemyValueLevel--;case "enemySpeed"->{save.enemySpeedLevel--;for(Enemy en:enemies)en.speed/=1.10f;}
+            case "gDamage"->save.generalDamageLevel--;case "gRate"->save.generalRateLevel--;case "yield"->save.creditYieldLevel--;case "density"->save.densityLevel--;case "spawn"->save.spawnRateLevel--;case "value"->save.enemyValueLevel--;case "enemySpeed"->{save.enemySpeedLevel--;for(Enemy en:enemies)en.speed/=1.10f;}case "enemyDamage"->save.enemyDamageLevel--;case "enemyHealth"->save.enemyHealthLevel--;
             case "tapDmg"->save.tapDamageLevel--;case "tapRate"->save.tapSpeedLevel--;case "plasma"->save.plasmaUnlocked=false;case "trail"->save.trailUnlocked=false;case "ultimate"->save.ultimateUnlocked=false;case "gravity"->save.gravityUnlocked=false;
             case "buyTurret"->{save.turretCount--;rebuildDefenses();}case "turretDmg"->save.turretDamageLevel--;case "turretRate"->save.turretRateLevel--;case "turretShield"->{save.turretShieldLevel--;rebuildDefenses();}case "autoRepair"->save.autoRepairUnlocked=false;case "laser"->save.turretLaserUnlocked=false;case "rockets"->save.turretRocketsUnlocked=false;case "turretPlusTwo"->save.turretPlusTwo=false;
             case "gunDrone"->{save.gunDrones--;rebuildDefenses();}case "missileDrone"->{save.missileDrones--;rebuildDefenses();}case "kamikaze"->{save.kamikazeDrones--;rebuildDefenses();}case "support"->{save.supportDrones--;rebuildDefenses();}case "droneDmg"->save.droneDamageLevel--;case "droneRate"->save.droneRateLevel--;case "droneAura"->save.droneAuraLevel--;case "droneShield"->{save.droneShieldLevel--;rebuildDefenses();}case "dronePlusTwo"->save.dronePlusTwo=false;case "fire"->save.fireUnlocked=false;case "ice"->save.iceUnlocked=false;case "lightning"->save.lightningUnlocked=false;
@@ -1047,7 +1095,7 @@ public class GameScreen extends ScreenAdapter {
         if(!BuildFlags.TEST_MODE && e.cost>0&&save.credits<e.cost){banner=game.assets.t("not_enough");bannerTime=1.2f;return;}
         if(!BuildFlags.TEST_MODE && e.cost>0)save.credits-=e.cost;
         switch(e.id){
-            case "gDamage"->save.generalDamageLevel++;case "gRate"->save.generalRateLevel++;case "yield"->save.creditYieldLevel++;case "density"->save.densityLevel++;case "spawn"->save.spawnRateLevel++;case "value"->save.enemyValueLevel++;case "enemySpeed"->{save.enemySpeedLevel++;for(Enemy en:enemies)en.speed*=1.10f;}
+            case "gDamage"->save.generalDamageLevel++;case "gRate"->save.generalRateLevel++;case "yield"->save.creditYieldLevel++;case "density"->save.densityLevel++;case "spawn"->save.spawnRateLevel++;case "value"->save.enemyValueLevel++;case "enemySpeed"->{save.enemySpeedLevel++;for(Enemy en:enemies)en.speed*=1.10f;}case "enemyDamage"->save.enemyDamageLevel++;case "enemyHealth"->save.enemyHealthLevel++;
             case "tapDmg"->save.tapDamageLevel++;case "tapRate"->save.tapSpeedLevel++;case "plasma"->save.plasmaUnlocked=true;case "trail"->save.trailUnlocked=true;case "ultimate"->save.ultimateUnlocked=true;case "gravity"->save.gravityUnlocked=true;
             case "buyTurret"->{save.turretCount++;rebuildDefenses();}case "turretDmg"->save.turretDamageLevel++;case "turretRate"->save.turretRateLevel++;case "turretShield"->{save.turretShieldLevel++;rebuildDefenses();}case "repairTurrets"->{for(Turret t:turrets){t.shield=t.maxShield;t.broken=false;}}case "autoRepair"->save.autoRepairUnlocked=true;case "laser"->save.turretLaserUnlocked=true;case "rockets"->save.turretRocketsUnlocked=true;case "turretPlusTwo"->save.turretPlusTwo=true;
             case "gunDrone"->{save.gunDrones++;rebuildDefenses();}case "missileDrone"->{save.missileDrones++;rebuildDefenses();}case "kamikaze"->{if(!save.kamikazeUnlocked)save.kamikazeUnlocked=true;save.kamikazeDrones++;rebuildDefenses();}case "support"->{save.supportDrones++;rebuildDefenses();}case "droneDmg"->save.droneDamageLevel++;case "droneRate"->save.droneRateLevel++;case "droneAura"->save.droneAuraLevel++;case "droneShield"->{save.droneShieldLevel++;rebuildDefenses();}case "dronePlusTwo"->save.dronePlusTwo=true;
