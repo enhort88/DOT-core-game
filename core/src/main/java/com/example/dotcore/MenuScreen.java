@@ -29,6 +29,11 @@ public class MenuScreen extends ScreenAdapter {
     private final Vector3 pointer = new Vector3();
     private Mode mode = Mode.MAIN;
     private int pendingDeleteSlot = -1;
+    private int dotTapCount = 0;
+    private float dotTapWindow = 0f;
+    private float cheatMessageTime = 0f;
+    private String cheatMessage = "";
+    private int draggingSlider = 0; // 1=sfx, 2=music
 
     private static class Star { float x,y,s,v; Star(float x,float y,float s,float v){this.x=x;this.y=y;this.s=s;this.v=v;} }
     private static class MenuEnemy { float x,y,r,vx,phase; int type; MenuEnemy(float x,float y,float r,float vx,float phase,int type){this.x=x;this.y=y;this.r=r;this.vx=vx;this.phase=phase;this.type=type;} }
@@ -40,8 +45,15 @@ public class MenuScreen extends ScreenAdapter {
         Gdx.input.setInputProcessor(new InputAdapter(){
             @Override public boolean touchDown(int screenX,int screenY,int pointerId,int button){
                 Vector3 p=viewport.unproject(new Vector3(screenX,screenY,0));
+                if(mode==Mode.SETTINGS && beginSlider(p.x,p.y)) return true;
                 click(p.x,p.y); return true;
             }
+            @Override public boolean touchDragged(int screenX,int screenY,int pointerId){
+                if(draggingSlider==0) return false;
+                Vector3 p=viewport.unproject(new Vector3(screenX,screenY,0));
+                updateSlider(p.x); return true;
+            }
+            @Override public boolean touchUp(int screenX,int screenY,int pointerId,int button){ draggingSlider=0; return false; }
             @Override public boolean keyDown(int keycode){
                 if(keycode== Input.Keys.ESCAPE){ if(mode!=Mode.MAIN) mode=Mode.MAIN; else Gdx.app.exit(); return true;} return false;
             }
@@ -53,6 +65,21 @@ public class MenuScreen extends ScreenAdapter {
 
     private void click(float x,float y){
         if(mode==Mode.MAIN){
+            // Easter egg: ten taps on the word DOT toggle free purchases.
+            if(new Rectangle(305,1695,205,115).contains(x,y)){
+                if(dotTapWindow<=0f)dotTapCount=0;
+                dotTapWindow=6.0f;
+                dotTapCount++;
+                if(dotTapCount>=10){
+                    game.settings.cheatsEnabled=!game.settings.cheatsEnabled;
+                    game.settings.save();
+                    cheatMessage=game.assets.t(game.settings.cheatsEnabled?"cheats_on":"cheats_off");
+                    cheatMessageTime=2.8f;
+                    dotTapCount=0;dotTapWindow=0f;
+                    game.assets.play(game.assets.buy,game.settings,.35f);
+                }
+                return;
+            }
             if(btn(1120).contains(x,y)){ mode=Mode.SLOTS; return; }
             if(btn(960).contains(x,y) && anySave()){ game.playSlot(game.saves.lastSlot()); return; }
             if(btn(800).contains(x,y)){ mode=Mode.SETTINGS; return; }
@@ -67,13 +94,12 @@ public class MenuScreen extends ScreenAdapter {
             }
             if(btn(260).contains(x,y)) mode=Mode.MAIN;
         } else if(mode==Mode.SETTINGS){
-            if(new Rectangle(270,1190,540,110).contains(x,y)){
+            if(new Rectangle(270,1210,540,110).contains(x,y)){
                 game.applyLanguage("ru".equals(game.settings.language)?"en":"ru"); return;
             }
-            if(new Rectangle(270,1010,540,110).contains(x,y)){ game.settings.sound=!game.settings.sound; game.settings.save(); return; }
-            if(new Rectangle(270,830,540,110).contains(x,y)){ game.settings.vibration=!game.settings.vibration; game.settings.save(); return; }
-            if(new Rectangle(270,650,540,110).contains(x,y)){ game.settings.highEffects=!game.settings.highEffects; game.settings.save(); return; }
-            if(btn(340).contains(x,y)) mode=Mode.MAIN;
+            if(new Rectangle(270,570,540,110).contains(x,y)){ game.settings.vibration=!game.settings.vibration; game.settings.save(); return; }
+            if(new Rectangle(270,410,540,110).contains(x,y)){ game.settings.highEffects=!game.settings.highEffects; game.settings.save(); return; }
+            if(btn(260).contains(x,y)) mode=Mode.MAIN;
         } else if(mode==Mode.ABOUT){ if(btn(340).contains(x,y)) mode=Mode.MAIN; }
         else if(mode==Mode.DELETE_CONFIRM){
             if(new Rectangle(180,720,330,120).contains(x,y)){ if(pendingDeleteSlot>0)game.saves.delete(pendingDeleteSlot); pendingDeleteSlot=-1;mode=Mode.SLOTS;return; }
@@ -83,6 +109,8 @@ public class MenuScreen extends ScreenAdapter {
 
     @Override public void render(float delta){
         updateStars(delta);updateMenuEnemies(delta);
+        if(dotTapWindow>0f){dotTapWindow-=delta;if(dotTapWindow<=0f)dotTapCount=0;}
+        if(cheatMessageTime>0f)cheatMessageTime-=delta;
         viewport.apply();
         camera.update();
         Gdx.gl.glClearColor(Ui.BG.r,Ui.BG.g,Ui.BG.b,1);
@@ -108,7 +136,10 @@ public class MenuScreen extends ScreenAdapter {
 
         batch.begin();
         Ui.text(batch,game.assets.font,"DOT//CORE",322,1780,1.65f,Color.WHITE);
-        Ui.text(batch,game.assets.font,"ALPHA 0.7 // SPACE UI BUILD",360,1700,0.54f,new Color(Ui.CYAN.r,Ui.CYAN.g,Ui.CYAN.b,0.8f));
+        Ui.text(batch,game.assets.font,"ALPHA 0.10 // HUD & TRAIL",352,1700,0.54f,new Color(Ui.CYAN.r,Ui.CYAN.g,Ui.CYAN.b,0.8f));
+        if(cheatMessageTime>0f){
+            Ui.centered(batch,game.assets.font,cheatMessage,new Rectangle(170,1430,740,100),.86f,game.settings.cheatsEnabled?Ui.GREEN:Ui.RED);
+        }
         batch.end();
 
         if(mode==Mode.MAIN) drawMain();
@@ -152,12 +183,40 @@ public class MenuScreen extends ScreenAdapter {
     }
 
     private void drawSettings(){
-        batch.begin(); Ui.text(batch,game.assets.font,game.assets.t("settings"),360,1480,1.12f,Color.WHITE); batch.end();
-        drawButton(new Rectangle(270,1190,540,110),game.assets.t("language")+": "+("ru".equals(game.settings.language)?game.assets.t("russian"):game.assets.t("english")),true);
-        drawButton(new Rectangle(270,1010,540,110),game.assets.t("sound")+": "+(game.settings.sound?game.assets.t("on"):game.assets.t("off")),true);
-        drawButton(new Rectangle(270,830,540,110),game.assets.t("vibration")+": "+(game.settings.vibration?game.assets.t("on"):game.assets.t("off")),true);
-        drawButton(new Rectangle(270,650,540,110),game.assets.t("effects")+": "+(game.settings.highEffects?game.assets.t("on"):game.assets.t("off")),true);
-        drawButton(btn(340),game.assets.t("back"),true);
+        batch.begin(); Ui.text(batch,game.assets.font,game.assets.t("settings"),360,1510,1.12f,Color.WHITE); batch.end();
+        drawButton(new Rectangle(270,1210,540,110),game.assets.t("language")+": "+("ru".equals(game.settings.language)?game.assets.t("russian"):game.assets.t("english")),true);
+        drawSlider(game.assets.t("sound_volume"),game.settings.soundVolume,1010);
+        drawSlider(game.assets.t("music_volume"),game.settings.musicVolume,810);
+        drawButton(new Rectangle(270,570,540,110),game.assets.t("vibration")+": "+(game.settings.vibration?game.assets.t("on"):game.assets.t("off")),true);
+        drawButton(new Rectangle(270,410,540,110),game.assets.t("effects")+": "+(game.settings.highEffects?game.assets.t("on"):game.assets.t("off")),true);
+        drawButton(btn(260),game.assets.t("back"),true);
+    }
+
+    private void drawSlider(String label,float value,float y){
+        float x=270,w=540,trackY=y+26;
+        batch.begin();
+        Ui.text(batch,game.assets.font,label,x,y+92,.76f,Color.WHITE);
+        String pct=Math.round(value*100f)+"%";float tw=game.assets.font.width(pct,.66f);Ui.text(batch,game.assets.font,pct,x+w-tw,y+92,.66f,Ui.CYAN);
+        batch.end();
+        sr.begin(ShapeRenderer.ShapeType.Filled);
+        sr.setColor(.025f,.055f,.085f,.96f);sr.rect(x,trackY,w,20);
+        sr.setColor(Ui.CYAN.r,Ui.CYAN.g,Ui.CYAN.b,.25f);sr.rect(x,trackY,w*value,20);
+        sr.setColor(Ui.CYAN);sr.rect(x,trackY,w*value,20);
+        float knobX=x+w*value;sr.setColor(.03f,.12f,.18f,1);sr.circle(knobX,trackY+10,23,24);sr.setColor(Color.WHITE);sr.circle(knobX,trackY+10,10,20);
+        sr.end();
+    }
+
+    private boolean beginSlider(float x,float y){
+        if(new Rectangle(240,1015,600,85).contains(x,y)){draggingSlider=1;updateSlider(x);return true;}
+        if(new Rectangle(240,815,600,85).contains(x,y)){draggingSlider=2;updateSlider(x);return true;}
+        return false;
+    }
+
+    private void updateSlider(float x){
+        float value=MathUtils.clamp((x-270f)/540f,0f,1f);
+        if(draggingSlider==1){game.settings.soundVolume=value;game.settings.sound=value>.001f;}
+        else if(draggingSlider==2){game.settings.musicVolume=value;game.assets.syncMusic(game.settings);}
+        game.settings.save();
     }
 
     private void drawAbout(){
@@ -168,7 +227,7 @@ public class MenuScreen extends ScreenAdapter {
         Ui.text(batch,game.assets.font,game.assets.t("about_text"),205,1150,0.72f,new Color(0.82f,0.92f,1f,1));
         Ui.text(batch,game.assets.font,game.assets.t("developer")+": Ponikarov Artem",205,975,0.68f,Color.WHITE);
         Ui.text(batch,game.assets.font,"enhort@gmail.com",205,895,0.68f,Ui.CYAN);
-        Ui.text(batch,game.assets.font,"DOT//CORE  Alpha 0.7",205,795,0.58f,new Color(.64f,.82f,.94f,1));
+        Ui.text(batch,game.assets.font,"DOT//CORE  Alpha 0.10",205,795,0.58f,new Color(.64f,.82f,.94f,1));
         batch.end();
         drawButton(btn(340),game.assets.t("back"),true);
     }

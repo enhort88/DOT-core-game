@@ -12,6 +12,7 @@ public class DotCoreGame extends Game {
         settings.load();
         assets = new Assets();
         assets.load(settings.language);
+        assets.startMusic(settings);
         saves = new SaveRepository();
         setScreen(new MenuScreen(this));
     }

@@ -1,4 +1,4 @@
-# DOT//CORE — Alpha 0.7
+# DOT//CORE — Alpha 0.10
 
 Cross-platform Java/libGDX prototype for Android + Linux/Windows desktop.
 
@@ -8,12 +8,9 @@ Cross-platform Java/libGDX prototype for Android + Linux/Windows desktop.
 ./gradlew -PskipAndroid :lwjgl3:run
 ```
 
-`-PskipAndroid` deliberately excludes the Android module, so desktop launch does not require an Android SDK.
-The included `gradlew` bootstraps Gradle 9.5.0 into `~/.gradle/dotcore-bootstrap` on the first run.
+`-PskipAndroid` excludes the Android module. The included bootstrap uses Gradle 9.5.0.
 
 ## Build/install Android
-
-Open the root folder in Android Studio, or from terminal:
 
 ```bash
 ./gradlew :android:assembleDebug
@@ -26,127 +23,78 @@ APK:
 android/build/outputs/apk/debug/android-debug.apk
 ```
 
-Requires Android SDK with compileSdk 36 and JDK 17+ (JDK 21 is fine).
+Requires compileSdk 36 and JDK 17+.
 
 ## Controls
 
-Desktop:
-- Mouse click: basic finger attack.
-- Hold and release: Plasma, after unlocking it.
-- Drag: Trail, after unlocking it.
-- Two simultaneous touches on Android: Ultimate. Desktop multi-touch is naturally intended for Android testing.
-- `S`: shop.
-- `Space`: pause.
-- `F`: cycle finger element.
-- `T`: cycle turret element.
-- `D`: cycle drone element.
-- `Esc`: pause/back.
+Desktop / Android:
+- Tap/click: basic finger attack.
+- Hold and release: Plasma after unlocking it.
+- Drag: Trail after unlocking it.
+- Two fingers on Android: Ultimate after unlocking it.
+- Bottom buttons open Debuffs, Effect Setup and Shop.
+- `S`: shop, `Space`: pause, `Esc`: pause/back.
 
-Android:
-- Tap / hold / drag work directly with touch.
-- Two-finger drag activates the ultimate after it is purchased.
-- Short vibration feedback is used for taps, purchases, explosions, bosses and gravity skills when enabled.
+## Alpha 0.10 highlights
 
-## Implemented in Alpha 0.7
+### Economy and difficulty
+- Normal economy is enabled by default; cheat mode remains a hidden easter egg.
+- New save starts with `120 C` and `1 C/s` passive income.
+- Passive income is earned **only while combat is running**. Shop, Debuffs, Effect Setup, Effect Shop and Pause freeze the game economy and timers.
+- The old `General` shop tab was removed. Combat upgrades live only in Finger / Turrets / Drones.
+- Enemy-value/risk upgrades live only in `Debuffs`.
+- Debuffs are cheaper and now increase passive income much more strongly.
+- Debuffs are grouped into Enemy Power, Pressure and Economy for easier reading.
 
-### Game loop
-- Enemy spheres descend toward the planet.
-- Normal, fast, tank, elite and boss spheres.
-- Increasing waves and rush periods.
-- Boss every fifth wave with a kill timer.
-- Planet integrity and defeat.
-- Overrun damage when too many spheres accumulate.
-- Passive credits per second.
+### Wave curve
+- Wave 1 is an introductory wave: only slow normal enemies, lower HP, slower spawn and no enemy shooting.
+- From wave 2 the game introduces fast/tank/elite enemies and hostile fire.
+- Spawn pressure increases progressively by wave.
+- Enemy movement speed grows slightly every wave and more noticeably after bosses.
+- Boss remains every fifth wave.
 
-### Risk/economy
-- Enemy density upgrade.
-- Spawn-rate upgrade.
-- Enemy-value upgrade.
-- These risk upgrades increase passive income.
-- Global damage, attack-speed and enemy-credit-yield upgrades.
+### Turrets
+- New games start with zero turrets; the first turret is purchased.
+- A single turret is placed exactly at the center of the defense line.
+- Base turret fire rate is slightly slower so the fire-rate upgrade has more value.
+- Turret damage/rate/shield remain independent upgrades.
 
-### Finger build
-- Basic tap from the start.
-- Purchasable Plasma.
-- Purchasable Trail.
-- Purchasable two-finger Ultimate.
-- Late Gravity unlock.
-- Gravity tap = micro black hole.
-- Gravity Plasma = large black hole.
-- Gravity Trail/Ultimate = spatial rift/pull.
-- Tap speed and damage upgrades.
+### UI / UX
+- Shop now has only three build tabs: Finger, Turrets, Drones.
+- Effect Setup is reorganized into three clear source groups:
+  - Finger: attack element.
+  - Turrets: attack element + weapon.
+  - Drones: attack element + aura element.
+- Debuffs are organized into logical sections and each card shows how much passive `C/s` the next level adds.
+- Shop / Debuffs / Effect buttons have a short energy-pulse press animation.
 
-### Elements/status effects
-Fire, Ice and Lightning can be selected independently for:
-- finger attacks;
-- turrets;
-- drones.
+### Music and sound
+- Added an original looping space ambient background track.
+- Music volume is adjustable in Settings: 0 / 25 / 50 / 75 / 100%.
+- SFX toggle remains independent from music volume.
+- Existing synthesized combat SFX and vibration are retained.
 
-Effects:
-- Fire applies damage-over-time burning.
-- Ice applies slow and accumulated freeze.
-- Lightning chains into nearby enemies.
-- The same status system is used regardless of whether damage came from finger, turret or drone.
+## Existing core systems
 
-### Turret build
-- Starts with one turret.
-- Buy up to 5 turret slots.
-- Late-game +2 slots => 7 total.
-- Shields can be damaged and turrets can be disabled.
-- Manual paid repair.
-- Mid-game auto-repair unlock that consumes credits.
-- Damage, shield and very high fire-rate scaling.
-- Pulse gun, unlockable pulse laser and rockets.
-- Element effects apply to turret attacks.
-
-### Drone build
-- Base cap: 9 drones.
-- Late-game +2 slots => 11 total.
-- Gun drone.
-- Missile drone.
-- Kamikaze drone.
-- Support drone.
-- Drones have shields but do not self-repair.
-- Destroyed drones respawn after a delay.
-- Support drones heal living damaged drones.
-- Drone aura level increases aura radius/power.
-- Fire aura damages/burns enemies and boosts nearby drone damage.
-- Ice aura slows enemies and helps nearby drone tempo.
-- Lightning aura periodically chains damage and boosts nearby drone fire rate.
-
-### Progression
-- 5 independent save slots.
-- Builds can be developed independently.
-- Shop upgrades and usage-based skill XP coexist.
-- Separate use-levels for tap, Plasma, Trail, turrets and drones.
-
-### UI / audiovisual
-- New sci-fi main menu.
-- Play, Continue, Settings, About, Exit.
-- RU/EN switch in settings.
-- Sound toggle, vibration toggle, effects-quality toggle.
-- Procedural/neon sphere and turret rendering retained as the visual direction.
-- 11 original synthesized SFX included: shots, pops, explosions, laser, rockets, buying, waves, boss warning, Plasma, electricity and ice.
-- No third-party audio assets.
+- Descending enemy spheres, waves, rush periods, bosses and planet integrity.
+- Finger Tap / Plasma / Trail / Ultimate / Gravity.
+- Fire / Ice / Lightning status effects.
+- Turrets with shields, manual repair and auto-repair.
+- Gun, missile, kamikaze and support drones.
+- Drone shields, respawn delay and support healing.
+- Drone elemental auras.
+- 5 independent save slots with deletion confirmation.
+- RU/EN localization.
+- Hidden cheat easter egg: tap `DOT` in `DOT//CORE` 10 times to toggle free purchases.
 
 ## Project structure
 
 ```text
 DotCoreLibGDX/
-├── assets/       shared game assets / localization / SFX
-├── core/         all gameplay and rendering
-├── lwjgl3/       Linux/Windows/macOS desktop launcher
+├── assets/       shared game assets, localization, music and SFX
+├── core/         gameplay and rendering
+├── lwjgl3/       desktop launcher
 └── android/      Android launcher
 ```
 
-## Notes
-
-This is still an Alpha vertical slice, not final balance. Numbers/prices are intentionally centralized in gameplay/shop code so we can tune the economy after playing it on a real device.
-
-
-## Test build notes
-
-Alpha 0.7 has `BuildFlags.TEST_MODE = true`: shop purchases and manual turret repairs do not spend credits, and the HUD shows unlimited test credits. Set it to `false` before economy balancing.
-
-
-See `CHANGELOG_ALPHA_0.4.md` for the latest UI/combat-feel changes.
+See `CHANGELOG_ALPHA_0.10.md` and `BALANCE_ALPHA_0.9.md` for this pass.

@@ -12,8 +12,8 @@ android {
         applicationId 'com.example.dotcore'
         minSdk 24
         targetSdk 35
-        versionCode 6
-        versionName '0.7.0-alpha'
+        versionCode 8
+        versionName '0.10.0-alpha'
     }
 
     sourceSets {

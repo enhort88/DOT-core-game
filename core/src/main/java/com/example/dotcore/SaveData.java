@@ -2,7 +2,7 @@ package com.example.dotcore;
 
 public class SaveData {
     public int slot = 1;
-    public double credits = 150;
+    public double credits = 120;
     public int wave = 1;
     public float integrity = 100f;
 
@@ -72,17 +72,24 @@ public class SaveData {
     public int turretCap() { return turretPlusTwo ? 7 : 5; }
     public int droneCap() { return dronePlusTwo ? 13 : 11; }
     public int droneCount() { return gunDrones + missileDrones + kamikazeDrones + supportDrones; }
-    public float generalDamageMultiplier() { return 1f + generalDamageLevel * 0.12f; }
-    public float generalRateMultiplier() { return 1f + generalRateLevel * 0.10f; }
-    public float creditMultiplier() { return 1f + creditYieldLevel * 0.15f + enemyValueLevel * 0.20f; }
+    // Legacy "general" upgrade fields remain only for save compatibility.
+    // Combat power is now upgraded inside Finger / Turrets / Drones only.
+    public float generalDamageMultiplier() { return 1f; }
+    public float generalRateMultiplier() { return 1f; }
+    public float creditMultiplier() { return 1f + enemyValueLevel * 0.18f; }
     public float passiveIncomePerSecond() {
-        return 1f + 0.45f * (densityLevel + spawnRateLevel + enemyValueLevel)
-            + 0.60f * enemySpeedLevel + 0.55f * enemyDamageLevel + 0.55f * enemyHealthLevel;
+        return 1f
+            + 0.80f * densityLevel
+            + 0.90f * spawnRateLevel
+            + 1.20f * enemyValueLevel
+            + 0.90f * enemySpeedLevel
+            + 1.10f * enemyDamageLevel
+            + 1.10f * enemyHealthLevel;
     }
-    public float spawnMultiplier() { return 1f + spawnRateLevel * 0.14f; }
-    public int densityBonus() { return densityLevel * 3; }
-    public float enemyValueMultiplier() { return 1f + enemyValueLevel * 0.22f; }
-    public float enemyHealthMultiplier() { return 1f + enemyHealthLevel * 0.16f; }
-    public float enemyDamageMultiplier() { return 1f + enemyDamageLevel * 0.15f; }
-    public float enemySpeedMultiplier() { return 1f + totalBossKills * 0.08f + enemySpeedLevel * 0.10f; }
+    public float spawnMultiplier() { return 1f + spawnRateLevel * 0.10f; }
+    public int densityBonus() { return densityLevel * 2; }
+    public float enemyValueMultiplier() { return 1f + enemyValueLevel * 0.18f; }
+    public float enemyHealthMultiplier() { return 1f + enemyHealthLevel * 0.14f; }
+    public float enemyDamageMultiplier() { return 1f + enemyDamageLevel * 0.12f; }
+    public float enemySpeedMultiplier() { return 1f + Math.max(0, wave - 1) * 0.015f + totalBossKills * 0.07f + enemySpeedLevel * 0.08f; }
 }
