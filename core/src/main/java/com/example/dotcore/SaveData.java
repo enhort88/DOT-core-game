@@ -6,6 +6,9 @@ public class SaveData {
     public int wave = 1;
     public float integrity = 100f;
 
+    // 0=Recon, 1=Invasion (default), 2=Apocalypse. Chosen when a new slot is created.
+    public int difficulty = 1;
+
     // Legacy fields kept for save compatibility. New builds no longer expose a General tab.
     public int generalDamageLevel = 0;
     public int generalRateLevel = 0;
@@ -78,6 +81,22 @@ public class SaveData {
     public float repairXp = 0;
     public int repairSkillLevel = 1;
 
+
+    // Enemy catalogue / bestiary progress. Counts are stored per save and aggregated in the main menu.
+    public long bestiaryBasic = 0;
+    public long bestiaryFast = 0;
+    public long bestiaryTank = 0;
+    public long bestiaryElite = 0;
+    public long bestiaryStar = 0;
+    public long bestiaryGuardian = 0;
+    public long bestiaryPhase = 0;
+    public long bestiaryFireResist = 0;
+    public long bestiaryIceResist = 0;
+    public long bestiaryLightningResist = 0;
+    public long bestiaryWard = 0;
+    public long bestiaryInfector = 0;
+    public long bestiaryBoss = 0;
+
     public long totalKills = 0;
     public long totalBossKills = 0;
     public long totalRepairs = 0;
@@ -89,25 +108,32 @@ public class SaveData {
 
     public float generalDamageMultiplier() { return 1f; }
     public float generalRateMultiplier() { return 1f; }
-    public float creditMultiplier() { return 1f + enemyValueLevel * 0.20f; }
+    public float difficultyHealthMultiplier() { return difficulty<=0 ? .82f : (difficulty>=2 ? 1.36f : 1f); }
+    public float difficultyDamageMultiplier() { return difficulty<=0 ? .78f : (difficulty>=2 ? 1.34f : 1f); }
+    public float difficultySpeedMultiplier() { return difficulty<=0 ? .92f : (difficulty>=2 ? 1.10f : 1f); }
+    public float difficultyDensityMultiplier() { return difficulty<=0 ? .84f : (difficulty>=2 ? 1.28f : 1f); }
+    public float difficultyRewardMultiplier() { return difficulty<=0 ? .90f : (difficulty>=2 ? 1.35f : 1f); }
+    public float waveHealthMultiplier() { return 1f + Math.max(0,wave-1)*.052f + totalBossKills*.045f; }
+    public float waveDamageMultiplier() { return 1f + Math.max(0,wave-1)*.034f + totalBossKills*.035f; }
+    public float creditMultiplier() { return (1f + enemyValueLevel * 0.20f) * difficultyRewardMultiplier(); }
 
     // Risk upgrades intentionally pay noticeably more than before.
     public float passiveIncomePerSecond() {
-        return 1f
+        return difficultyRewardMultiplier() * (1f
             + 1.35f * densityLevel
             + 1.55f * spawnRateLevel
             + 1.80f * enemyValueLevel
             + 1.35f * enemySpeedLevel
             + 1.60f * enemyDamageLevel
-            + 1.60f * enemyHealthLevel;
+            + 1.60f * enemyHealthLevel);
     }
 
     public float spawnMultiplier() { return 1f + spawnRateLevel * 0.11f; }
     public int densityBonus() { return densityLevel * 2; }
     public float enemyValueMultiplier() { return 1f + enemyValueLevel * 0.20f; }
-    public float enemyHealthMultiplier() { return 1f + enemyHealthLevel * 0.14f; }
-    public float enemyDamageMultiplier() { return 1f + enemyDamageLevel * 0.12f; }
+    public float enemyHealthMultiplier() { return (1f + enemyHealthLevel * 0.14f) * waveHealthMultiplier() * difficultyHealthMultiplier(); }
+    public float enemyDamageMultiplier() { return (1f + enemyDamageLevel * 0.12f) * waveDamageMultiplier() * difficultyDamageMultiplier(); }
     public float enemySpeedMultiplier() {
-        return 1f + Math.max(0, wave - 1) * 0.016f + totalBossKills * 0.075f + enemySpeedLevel * 0.08f;
+        return (1f + Math.max(0, wave - 1) * 0.013f + totalBossKills * 0.060f + enemySpeedLevel * 0.08f) * difficultySpeedMultiplier();
     }
 }

@@ -60,9 +60,20 @@ public class IntroScreen extends ScreenAdapter {
                 if(nameEntry && keycode==Input.Keys.DEL){
                     if(!typedName.isEmpty())typedName=typedName.substring(0,typedName.length()-1);return true;
                 }
-                if(keycode==Input.Keys.ESCAPE){if(nameEntry && replay){nameEntry=false;hideKeyboard();return true;}finish();return true;}return false;
+                if(keycode==Input.Keys.ESCAPE || keycode==Input.Keys.BACK){
+                    if(nameEntry){
+                        hideKeyboard();
+                        if(replay)nameEntry=false;
+                        return true;
+                    }
+                    if(page>0){page--;return true;}
+                    if(replay){finish();return true;}
+                    startNameEdit();return true;
+                }
+                return false;
             }
         });
+        Gdx.input.setCatchKey(Input.Keys.BACK,true);
     }
 
     private void startNameEdit(){typedName=game.settings.playerName==null?"":game.settings.playerName;nameEntry=true;showKeyboard();}

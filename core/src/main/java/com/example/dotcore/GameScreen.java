@@ -20,6 +20,12 @@ import com.badlogic.gdx.utils.viewport.Viewport;
 
 public class GameScreen extends ScreenAdapter {
     private static final float W=1080f, H=1920f, GROUND_Y=150f;
+    // Keep the combat layer visually separated from the top wave/boss HUD.
+    // Enemies enter below this boundary instead of crawling underneath the progress line.
+    private static final float COMBAT_TOP_Y=1818f;
+    private static final long FIRE_UNLOCK_COST=12_000L;
+    private static final long ICE_UNLOCK_COST=30_000L;
+    private static final long LIGHTNING_UNLOCK_COST=75_000L;
     private static final int MAX_ENEMIES_BEFORE_OVERRUN=46;
 
     private final DotCoreGame game;
@@ -44,6 +50,9 @@ public class GameScreen extends ScreenAdapter {
 
     private boolean shopOpen=false, elementConfigOpen=false, effectShopOpen=false, debuffShopOpen=false, paused=false, defeated=false, shopSellMode=false;
     private int shopTab=0;
+    private int shopGesturePointer=-1;
+    private float shopGestureStartX=0f, shopGestureStartY=0f, shopGestureX=0f, shopGestureY=0f, shopPageShift=0f;
+    private boolean shopGestureActive=false, shopGestureMoved=false;
     private float spawnTimer=0f, waveClock=0f, passiveClock=0f, saveClock=0f, hostilePulseClock=0f, bonusTimer=14f, overdriveTime=0f;
     private float bannerTime=2.2f;
     private String banner="";
@@ -65,6 +74,7 @@ public class GameScreen extends ScreenAdapter {
     private static final Color GRAV=new Color(.48f,.12f,.75f,1f);
 
     private enum EnemyKind { NORMAL, FAST, TANK, ELITE, BOSS }
+    private enum EnemyArchetype { BASIC, FAST, TANK, ELITE, STAR, GUARDIAN, PHASE, FIRE_RESIST, ICE_RESIST, LIGHTNING_RESIST, ELEMENT_WARD, INFECTOR, BOSS }
     private enum EnemyAttackKind { NORMAL, CORROSION, PARASITE, DISRUPTION }
     private enum ShotKind { BULLET, ROCKET }
     private enum BonusType { CREDIT, HEAL, OVERDRIVE }
@@ -73,16 +83,18 @@ public class GameScreen extends ScreenAdapter {
         boolean down; float x,y,startX,startY,startTime,lastTrailTime,lastTrailX,lastTrailY,chargeFxClock; boolean dragged,twoFinger;
     }
     private static class Enemy {
-        EnemyKind kind; float x,y,r,hp,maxHp,speed,reward,attackCd;
+        EnemyKind kind; EnemyArchetype archetype=EnemyArchetype.BASIC; float x,y,r,hp,maxHp,speed,reward,attackCd;
         float burnTime,burnDps,slowTime=0,slow=1f,freezeTime=0,chill=0,tapShieldTime=0,tapShieldCooldown=0;
         int shapeSides=0;
+        Element resistElement=Element.NEUTRAL;
+        float auraRadius=0f,auraReduction=0f;
         boolean dead=false;
     }
     private static class Projectile {
         float x,y,vx,vy,r,damage,life=3f,aoe=0; Element element; ShotKind kind; Enemy target;
     }
     private static class HostileProjectile {
-        float x,y,vx,vy,life=4f,damage,r=7f; Turret turretTarget; Drone droneTarget; EnemyAttackKind attackKind=EnemyAttackKind.NORMAL;
+        float x,y,vx,vy,life=4f,damage,r=7f; Turret turretTarget; Drone droneTarget; boolean planetTarget=false; EnemyAttackKind attackKind=EnemyAttackKind.NORMAL;
     }
     private static class Particle {
         float x,y,vx,vy,life,maxLife,size; Color color;
@@ -108,7 +120,7 @@ public class GameScreen extends ScreenAdapter {
     }
     private static class Drone {
         DroneType type; float x,y,angle,shield,maxShield,cooldown,auraTick,respawn=0;
-        float orbitRadiusX,orbitRadiusY,orbitSpeed,orbitPhase,centerOffsetX,centerOffsetY,heading; Enemy target;
+        float orbitRadiusX,orbitRadiusY,orbitSpeed,orbitPhase,centerOffsetX,centerOffsetY,heading; Enemy target; Drone supportTarget;
         float corrosionTime=0f,jamTime=0f;int infectionHits=0;boolean alive=true;
     }
     private static class ShopEntry {
@@ -127,15 +139,18 @@ public class GameScreen extends ScreenAdapter {
             @Override public boolean touchDown(int sx,int sy,int pointer,int button){
                 if(pointer>=touches.length) return false;
                 Vector3 p=viewport.unproject(tmp3.set(sx,sy,0));
+                if(shopOpen){beginShopGesture(pointer,p.x,p.y);return true;}
                 if(handleUiDown(p.x,p.y)) return true;
-                if(shopOpen||debuffShopOpen||effectShopOpen||elementConfigOpen||paused||defeated) return true;
+                if(debuffShopOpen||effectShopOpen||elementConfigOpen||paused||defeated) return true;
                 Touch t=touches[pointer]; t.down=true;t.x=t.startX=p.x;t.y=t.startY=p.y;t.lastTrailX=p.x;t.lastTrailY=p.y;t.startTime=save.playSeconds;t.lastTrailTime=save.playSeconds;t.chargeFxClock=0;t.dragged=false;t.twoFinger=false;
                 markTwoFinger();
                 return true;
             }
             @Override public boolean touchDragged(int sx,int sy,int pointer){
-                if(pointer>=touches.length||shopOpen||debuffShopOpen||effectShopOpen||elementConfigOpen||paused||defeated) return false;
+                if(pointer>=touches.length) return false;
                 Vector3 p=viewport.unproject(tmp3.set(sx,sy,0));
+                if(shopOpen && shopGestureActive && pointer==shopGesturePointer){updateShopGesture(p.x,p.y);return true;}
+                if(debuffShopOpen||effectShopOpen||elementConfigOpen||paused||defeated) return false;
                 Touch t=touches[pointer]; if(!t.down) return false;
                 float oldX=t.x,oldY=t.y; t.x=p.x;t.y=p.y;
                 if(Vector2.dst(t.startX,t.startY,t.x,t.y)>24) t.dragged=true;
@@ -150,8 +165,9 @@ public class GameScreen extends ScreenAdapter {
             @Override public boolean touchUp(int sx,int sy,int pointer,int button){
                 if(pointer>=touches.length) return false;
                 Vector3 p=viewport.unproject(tmp3.set(sx,sy,0));
+                if(shopOpen && shopGestureActive && pointer==shopGesturePointer){finishShopGesture(p.x,p.y);return true;}
                 Touch t=touches[pointer];
-                if(shopOpen||debuffShopOpen||effectShopOpen||elementConfigOpen||paused||defeated){t.down=false;return true;}
+                if(debuffShopOpen||effectShopOpen||elementConfigOpen||paused||defeated){t.down=false;return true;}
                 boolean wasTwo=t.twoFinger||twoTouchesDown();
                 float held=save.playSeconds-t.startTime;
                 t.x=p.x;t.y=p.y;
@@ -168,7 +184,15 @@ public class GameScreen extends ScreenAdapter {
                 return true;
             }
             @Override public boolean keyDown(int key){
-                if(key==Input.Keys.ESCAPE){ if(shopOpen){shopOpen=false;return true;} if(paused){paused=false;return true;} paused=true;return true; }
+                if(key==Input.Keys.ESCAPE || key==Input.Keys.BACK){
+                    resetTouchState(true);
+                    if(effectShopOpen){effectShopOpen=false;elementConfigOpen=true;return true;}
+                    if(elementConfigOpen){elementConfigOpen=false;return true;}
+                    if(debuffShopOpen){debuffShopOpen=false;shopSellMode=false;game.saves.save(save);return true;}
+                    if(shopOpen){shopOpen=false;shopSellMode=false;game.saves.save(save);return true;}
+                    if(paused){paused=false;return true;}
+                    paused=true;return true;
+                }
                 if(key==Input.Keys.S){shopOpen=!shopOpen;return true;}
                 if(key==Input.Keys.SPACE){paused=!paused;return true;}
                 if(key==Input.Keys.F){save.fingerElement=save.fingerElement.nextCombat(true,save,cheatsEnabled());return true;}
@@ -177,6 +201,36 @@ public class GameScreen extends ScreenAdapter {
                 return false;
             }
         });
+        Gdx.input.setCatchKey(Input.Keys.BACK,true);
+    }
+
+    private void beginShopGesture(int pointer,float x,float y){
+        shopGesturePointer=pointer;shopGestureStartX=shopGestureX=x;shopGestureStartY=shopGestureY=y;
+        shopGestureActive=true;shopGestureMoved=false;shopPageShift=0f;
+    }
+    private void updateShopGesture(float x,float y){
+        shopGestureX=x;shopGestureY=y;
+        float dx=x-shopGestureStartX,dy=y-shopGestureStartY;
+        if(Math.abs(dx)>18f && Math.abs(dx)>Math.abs(dy)*.75f)shopGestureMoved=true;
+        if(shopGestureMoved)shopPageShift=MathUtils.clamp(dx*.22f,-105f,105f);
+    }
+    private void finishShopGesture(float x,float y){
+        float dx=x-shopGestureStartX,dy=y-shopGestureStartY;
+        boolean horizontal=Math.abs(dx)>115f && Math.abs(dx)>Math.abs(dy)*1.15f;
+        if(horizontal){
+            int next=shopTab+(dx<0?1:-1);
+            next=MathUtils.clamp(next,0,2);
+            if(next!=shopTab){shopTab=next;shopPageShift=dx<0?125f:-125f;game.assets.play(game.assets.buy,game.settings,.045f);}
+            else shopPageShift=0f;
+        }else if(dx*dx+dy*dy<42f*42f){
+            shopClick(x,y);
+        }
+        shopGestureActive=false;shopGesturePointer=-1;shopGestureMoved=false;
+    }
+    private void changeShopTab(int next){
+        next=MathUtils.clamp(next,0,2);
+        if(next==shopTab)return;
+        shopPageShift=next>shopTab?125f:-125f;shopTab=next;
     }
 
     private void markTwoFinger(){
@@ -185,6 +239,13 @@ public class GameScreen extends ScreenAdapter {
         for(Touch t:touches) if(t.down && marked<2){t.twoFinger=true;marked++;}
     }
     private boolean twoTouchesDown(){int n=0;for(Touch t:touches)if(t.down&&++n>=2)return true;return false;}
+
+    private boolean anyTouchState(){for(Touch t:touches)if(t.down||t.twoFinger)return true;return annihilationWasActive;}
+    private void resetTouchState(boolean startCooldown){
+        if(startCooldown && annihilationWasActive && annihilationCooldown<=0f)annihilationCooldown=Math.max(8f,28f-save.ultimateSkillLevel*.35f);
+        for(Touch t:touches){t.down=false;t.dragged=false;t.twoFinger=false;t.chargeFxClock=0f;}
+        activeTwoFingerMask=0;annihilationUseTime=0f;annihilationWasActive=false;
+    }
 
     private boolean handleUiDown(float x,float y){
         if(defeated){
@@ -201,10 +262,10 @@ public class GameScreen extends ScreenAdapter {
         if(debuffShopOpen){ debuffShopClick(x,y); return true; }
         if(effectShopOpen){ effectShopClick(x,y); return true; }
         if(elementConfigOpen){ elementConfigClick(x,y); return true; }
-        if(new Rectangle(930,4,120,104).contains(x,y)){triggerUiPulse(982,58,Ui.CYAN);shopOpen=true;return true;}
-        if(effectsSystemUnlocked()&&new Rectangle(810,4,104,104).contains(x,y)){triggerUiPulse(862,58,ELEC);elementConfigOpen=true;return true;}
-        if(new Rectangle(690,4,104,104).contains(x,y)){triggerUiPulse(742,58,Ui.RED);debuffShopOpen=true;shopSellMode=false;return true;}
-        if(new Rectangle(20,24,104,104).contains(x,y)){paused=true;return true;}
+        if(new Rectangle(932,0,96,96).contains(x,y)){resetTouchState(true);triggerUiPulse(980,48,Ui.CYAN);shopOpen=true;return true;}
+        if(effectsSystemUnlocked()&&new Rectangle(827,0,96,96).contains(x,y)){resetTouchState(true);triggerUiPulse(875,48,ELEC);elementConfigOpen=true;return true;}
+        if(new Rectangle(722,0,96,96).contains(x,y)){resetTouchState(true);triggerUiPulse(770,48,Ui.RED);debuffShopOpen=true;shopSellMode=false;return true;}
+        if(new Rectangle(20,24,104,104).contains(x,y)){resetTouchState(true);paused=true;return true;}
         if(tryCollectBonus(x,y)) return true;
         if(tryRepairTurret(x,y)) return true;
         if(tryRepairDrone(x,y)) return true;
@@ -265,7 +326,10 @@ public class GameScreen extends ScreenAdapter {
 
     @Override public void render(float delta){
         float d=Math.min(delta,0.05f);
+        // Android can occasionally miss a touchUp after multitouch/system gestures. Never leave the finger state latched.
+        if(!Gdx.input.isTouched() && anyTouchState())resetTouchState(true);
         if(uiPulseTime>0f)uiPulseTime=Math.max(0f,uiPulseTime-d);
+        if(!shopGestureActive && Math.abs(shopPageShift)>.25f)shopPageShift=MathUtils.lerp(shopPageShift,0f,Math.min(1f,d*11f));
         // Shop / debuffs / effect setup / pause are true pauses: no credits, waves, cooldowns or play time advance.
         if(!paused&&!shopOpen&&!debuffShopOpen&&!elementConfigOpen&&!effectShopOpen&&!defeated) update(d);
         draw();
@@ -294,11 +358,15 @@ public class GameScreen extends ScreenAdapter {
         float waveRush=(save.wave>1&&waveClock>24f)?1.65f:1f;
         if(spawnTimer<=0 && !bossActive){
             int batchCount=1;
+            if(save.wave>=6 && MathUtils.random()<Math.min(.38f,(save.wave-5)*.018f))batchCount++;
+            if(save.difficulty>=2 && MathUtils.random()<.24f)batchCount++;
+            if(save.difficulty<=0 && batchCount>1)batchCount=1;
             float extraChance=Math.min(.78f,save.densityLevel*.085f);
             if(save.densityLevel>0&&MathUtils.random()<extraChance)batchCount++;
             if(save.densityLevel>=5&&MathUtils.random()<Math.min(.38f,(save.densityLevel-4)*.055f))batchCount++;
             for(int i=0;i<batchCount;i++) spawnEnemy(false);
-            float baseSpawn=save.wave==1?2.35f:Math.max(.58f,1.04f-(save.wave-2)*.032f);
+            float baseSpawn=save.wave==1?2.35f:Math.max(.52f,1.06f-(save.wave-2)*.030f);
+            baseSpawn/=save.difficultyDensityMultiplier();
             spawnTimer=(baseSpawn/(save.spawnMultiplier()*waveRush))*MathUtils.random(.78f,1.18f);
         }
 
@@ -333,31 +401,76 @@ public class GameScreen extends ScreenAdapter {
     private void spawnEnemy(boolean boss){
         Enemy e=new Enemy();
         if(boss){
-            e.kind=EnemyKind.BOSS;e.r=118;e.maxHp=(1800+save.wave*480)*save.enemyHealthMultiplier();e.speed=11;e.reward=(900+save.wave*90)*save.creditMultiplier();
+            e.kind=EnemyKind.BOSS;e.archetype=EnemyArchetype.BOSS;e.r=112;e.maxHp=(1650+save.wave*390)*save.enemyHealthMultiplier();e.speed=10.5f;e.reward=(1000+save.wave*110)*save.creditMultiplier();e.shapeSides=save.wave>=10?3:6;
         } else if(save.wave==1){
-            // Intro/tutorial wave: only simple slow targets, no enemy shooting.
-            e.kind=EnemyKind.NORMAL;e.r=24;e.maxHp=16f*save.enemyHealthMultiplier();e.speed=20f;e.reward=18f*save.creditMultiplier();
+            e.kind=EnemyKind.NORMAL;e.archetype=EnemyArchetype.BASIC;e.r=24;e.maxHp=15f*save.enemyHealthMultiplier();e.speed=19f;e.reward=18f*save.creditMultiplier();e.shapeSides=0;
         } else {
             float q=MathUtils.random();
-            float eliteChance=Math.min(.16f,.055f+save.wave*.004f);
+            float eliteChance=Math.min(.17f,.052f+save.wave*.0043f);
             float tankCut=eliteChance+.16f+Math.min(.08f,save.wave*.003f);
             float fastCut=tankCut+.22f+Math.min(.08f,save.wave*.0025f);
-            if(q<eliteChance){e.kind=EnemyKind.ELITE;e.r=46;e.maxHp=(95+save.wave*10)*save.enemyHealthMultiplier();e.speed=23;e.reward=(42+save.wave*3)*save.creditMultiplier();}
-            else if(q<tankCut){e.kind=EnemyKind.TANK;e.r=38;e.maxHp=(60+save.wave*7)*save.enemyHealthMultiplier();e.speed=18;e.reward=(28+save.wave*2.2f)*save.creditMultiplier();}
-            else if(q<fastCut){e.kind=EnemyKind.FAST;e.r=17;e.maxHp=(13+save.wave*2.0f)*save.enemyHealthMultiplier();e.speed=52;e.reward=(8+save.wave*.9f)*save.creditMultiplier();}
-            else {e.kind=EnemyKind.NORMAL;e.r=25;e.maxHp=(25+save.wave*3.2f)*save.enemyHealthMultiplier();e.speed=31;e.reward=(13+save.wave*1.2f)*save.creditMultiplier();}
+            if(q<eliteChance){e.kind=EnemyKind.ELITE;e.archetype=EnemyArchetype.ELITE;e.r=45;e.maxHp=(86+save.wave*8.5f)*save.enemyHealthMultiplier();e.speed=23;e.reward=(44+save.wave*3.2f)*save.creditMultiplier();}
+            else if(q<tankCut){e.kind=EnemyKind.TANK;e.archetype=EnemyArchetype.TANK;e.r=38;e.maxHp=(55+save.wave*6f)*save.enemyHealthMultiplier();e.speed=18;e.reward=(30+save.wave*2.3f)*save.creditMultiplier();}
+            else if(q<fastCut){e.kind=EnemyKind.FAST;e.archetype=EnemyArchetype.FAST;e.r=17;e.maxHp=(12+save.wave*1.75f)*save.enemyHealthMultiplier();e.speed=52;e.reward=(9+save.wave*.95f)*save.creditMultiplier();}
+            else {e.kind=EnemyKind.NORMAL;e.archetype=EnemyArchetype.BASIC;e.r=25;e.maxHp=(23+save.wave*2.7f)*save.enemyHealthMultiplier();e.speed=30;e.reward=(14+save.wave*1.3f)*save.creditMultiplier();}
+
+            int techWave=cheatsEnabled()?Math.max(save.wave,12):save.wave;
+            // Tactical archetypes are layered over the physical class. The weights are deliberately mild:
+            // the game reacts to a build, but never hard-counters it every wave.
+            boolean fingerHeavy=save.turretCount<=1 && save.droneCount()<=1;
+            float special=MathUtils.random();
+            if(techWave>=10 && save.bestiaryStar==0){
+                makeStar(e);
+            }else if(techWave>=12 && special<.045f){
+                makeElementWard(e);
+            }else if(techWave>=8 && special<.10f){
+                makeInfector(e);
+            }else if(save.wave>=7 && special<(.16f+(fingerHeavy?.08f:0f))){
+                makePhase(e,fingerHeavy);
+            }else if(save.wave>=6 && special<(.23f+(fingerHeavy?.055f:0f))){
+                makeGuardian(e);
+            }else if(techWave>=7 && special<.36f){
+                int pick=MathUtils.random(0,2);makeResistant(e,pick==0?Element.FIRE:pick==1?Element.ICE:Element.LIGHTNING);
+            }else if(techWave>=10 && special<.43f){
+                makeStar(e);
+            }
+
+            if(e.shapeSides==0){
+                if(save.wave<5)e.shapeSides=0;
+                else if(save.wave<10)e.shapeSides=e.kind==EnemyKind.TANK?4:e.kind==EnemyKind.ELITE?6:e.kind==EnemyKind.FAST?5:(MathUtils.randomBoolean()?5:6);
+                else e.shapeSides=e.kind==EnemyKind.TANK?4:(e.kind==EnemyKind.FAST||MathUtils.random()<.45f?3:5+MathUtils.random(0,1));
+            }
         }
         e.speed*=save.enemySpeedMultiplier();
-        if(save.wave<5)e.shapeSides=0;
-        else if(save.wave<10)e.shapeSides=e.kind==EnemyKind.TANK?4:e.kind==EnemyKind.ELITE?6:e.kind==EnemyKind.FAST?5:(MathUtils.randomBoolean()?5:6);
-        else e.shapeSides=e.kind==EnemyKind.TANK?4:e.kind==EnemyKind.BOSS?6:(e.kind==EnemyKind.FAST||MathUtils.random()<.45f?3:5+MathUtils.random(0,1));
-        if(boss&&save.wave>=10)e.shapeSides=3;
-        e.tapShieldCooldown=(save.wave>=7&&(e.kind==EnemyKind.ELITE||e.kind==EnemyKind.BOSS))?MathUtils.random(2.5f,5.5f):999f;
-        e.hp=e.maxHp;e.x=MathUtils.random(75f,W-75f);e.y=boss?1660f:H+e.r;e.attackCd=MathUtils.random(1.2f,3.6f);enemies.add(e);
+        // Finger-heavy builds see phase shields a little more often; other builds still encounter them.
+        if(e.archetype==EnemyArchetype.PHASE)e.tapShieldCooldown=MathUtils.random(1.4f,3.0f);
+        else if(save.wave>=7&&(e.kind==EnemyKind.ELITE||e.kind==EnemyKind.BOSS))e.tapShieldCooldown=MathUtils.random(3.0f,6.0f);
+        else e.tapShieldCooldown=999f;
+        e.hp=e.maxHp;e.x=MathUtils.random(75f,W-75f);e.y=boss?1650f:COMBAT_TOP_Y-e.r;e.attackCd=MathUtils.random(1.2f,3.6f);enemies.add(e);
+    }
+
+    private void makeStar(Enemy e){
+        e.archetype=EnemyArchetype.STAR;e.kind=EnemyKind.ELITE;e.r=39f;e.maxHp*=1.45f;e.hp=e.maxHp;e.speed*=.86f;e.reward*=1.85f;e.shapeSides=5;
+    }
+    private void makeGuardian(Enemy e){
+        e.archetype=EnemyArchetype.GUARDIAN;e.kind=EnemyKind.TANK;e.r=53f;e.maxHp*=3.2f;e.hp=e.maxHp;e.speed*=.62f;e.reward*=2.6f;e.shapeSides=6;e.auraRadius=235f;e.auraReduction=.70f;
+    }
+    private void makePhase(Enemy e,boolean fingerHeavy){
+        e.archetype=EnemyArchetype.PHASE;e.kind=EnemyKind.ELITE;e.r=Math.max(e.r,34f);e.maxHp*=1.25f;e.hp=e.maxHp;e.reward*=1.45f;e.shapeSides=4;e.tapShieldCooldown=fingerHeavy?1.2f:2.5f;
+    }
+    private void makeResistant(Enemy e,Element element){
+        e.resistElement=element;e.maxHp*=1.18f;e.hp=e.maxHp;e.reward*=1.35f;e.shapeSides=6;
+        e.archetype=element==Element.FIRE?EnemyArchetype.FIRE_RESIST:element==Element.ICE?EnemyArchetype.ICE_RESIST:EnemyArchetype.LIGHTNING_RESIST;
+    }
+    private void makeElementWard(Enemy e){
+        e.archetype=EnemyArchetype.ELEMENT_WARD;e.kind=EnemyKind.ELITE;e.r=49f;e.maxHp*=2.7f;e.hp=e.maxHp;e.speed*=.74f;e.reward*=2.25f;e.shapeSides=6;e.auraRadius=255f;e.auraReduction=.65f;
+    }
+    private void makeInfector(Enemy e){
+        e.archetype=EnemyArchetype.INFECTOR;e.kind=EnemyKind.FAST;e.r=29f;e.maxHp*=1.32f;e.hp=e.maxHp;e.speed*=1.08f;e.reward*=1.7f;e.shapeSides=3;
     }
 
     private void spawnBoss(){
-        bossActive=true;bossTimer=32f;spawnEnemy(true);bossEnemy=enemies.peek();banner=game.assets.t("boss_incoming");bannerTime=3f;game.assets.play(game.assets.boss,game.settings,.75f);vibrate(100);
+        resetTouchState(true);bossActive=true;bossTimer=save.difficulty<=0?36f:(save.difficulty>=2?29f:32f);spawnEnemy(true);bossEnemy=enemies.peek();banner=game.assets.t("boss_incoming");bannerTime=3f;game.assets.play(game.assets.boss,game.settings,.75f);vibrate(100);
     }
 
     private void updateEnemies(float d){
@@ -367,10 +480,15 @@ public class GameScreen extends ScreenAdapter {
             if(e.burnTime>0){e.burnTime-=d;damageRaw(e,e.burnDps*d);}
             if(e.freezeTime>0){e.freezeTime-=d;e.slow=.08f;}
             else if(e.slowTime>0){e.slowTime-=d;} else {e.slow=1f;e.chill=Math.max(0,e.chill-d*.45f);}
-            if(e.tapShieldTime>0f)e.tapShieldTime-=d;else if(e.tapShieldCooldown<900f){e.tapShieldCooldown-=d;if(e.tapShieldCooldown<=0f){e.tapShieldTime=2.2f;e.tapShieldCooldown=MathUtils.random(6.5f,10f);}}
-            e.y-=e.speed*e.slow*d;
+            if(e.tapShieldTime>0f)e.tapShieldTime-=d;else if(e.tapShieldCooldown<900f){e.tapShieldCooldown-=d;if(e.tapShieldCooldown<=0f){e.tapShieldTime=e.archetype==EnemyArchetype.PHASE?2.7f:2.2f;e.tapShieldCooldown=e.archetype==EnemyArchetype.PHASE?MathUtils.random(4.0f,6.5f):MathUtils.random(7f,10.5f);}}
+            float moveSpeed=e.speed*e.slow;
+            // Stars are artillery: once they reach the upper combat band, they advance much more slowly and keep firing.
+            if(e.archetype==EnemyArchetype.STAR && e.y<1450f)moveSpeed*=.28f;
+            e.y-=moveSpeed*d;
+            // Gravity/other movement may never pull an enemy back into the wave HUD lane.
+            e.y=Math.min(e.y,COMBAT_TOP_Y-e.r);
             e.attackCd-=d;
-            if(save.wave>1 && e.attackCd<=0 && (e.kind==EnemyKind.BOSS || e.y<920 || hasDroneNear(e.x,e.y,430f))) { e.attackCd=MathUtils.random(2f,4.2f); enemyAttack(e); }
+            if(save.wave>1 && e.attackCd<=0 && (e.kind==EnemyKind.BOSS || e.archetype==EnemyArchetype.STAR || e.archetype==EnemyArchetype.INFECTOR || e.y<980 || hasDroneNear(e.x,e.y,460f))) { e.attackCd=e.archetype==EnemyArchetype.STAR?MathUtils.random(1.15f,1.8f):MathUtils.random(2f,4.2f); enemyAttack(e); }
             if(e.y-e.r<=GROUND_Y){
                 save.integrity-=e.kind==EnemyKind.BOSS?60:(e.kind==EnemyKind.ELITE?13:e.kind==EnemyKind.TANK?9:5);
                 explode(e.x,e.y,colorFor(e),e.kind==EnemyKind.BOSS?55:22);e.dead=true;
@@ -381,21 +499,32 @@ public class GameScreen extends ScreenAdapter {
     private void enemyAttack(Enemy e){
         if(turrets.size+drones.size==0)return;
         float dmg=(e.kind==EnemyKind.BOSS?18f:e.kind==EnemyKind.ELITE?7f:3.5f)*save.enemyDamageMultiplier();
-        HostileProjectile p=new HostileProjectile();p.x=e.x;p.y=e.y;p.damage=dmg;p.r=e.kind==EnemyKind.BOSS?10f:7f;
-        float roll=MathUtils.random();
-        if(save.wave>=8 && (e.kind==EnemyKind.ELITE||e.kind==EnemyKind.BOSS) && roll<.18f)p.attackKind=EnemyAttackKind.PARASITE;
-        else if(save.wave>=5 && roll<.38f)p.attackKind=EnemyAttackKind.CORROSION;
-        else if(save.wave>=10 && roll<.50f)p.attackKind=EnemyAttackKind.DISRUPTION;
-        else p.attackKind=EnemyAttackKind.NORMAL;
-        if(p.attackKind==EnemyAttackKind.PARASITE)p.damage*=.35f;
-        else if(p.attackKind==EnemyAttackKind.CORROSION)p.damage*=.55f;
-        else if(p.attackKind==EnemyAttackKind.DISRUPTION)p.damage*=.45f;
-        Drone nearestDrone=null;float droneBest=430f*430f;
-        for(int i=0;i<drones.size;i++){Drone q=drones.get(i);if(!q.alive)continue;float ds=dist2(e.x,e.y,q.x,q.y);if(ds<droneBest){droneBest=ds;nearestDrone=q;}}
-        if(nearestDrone!=null){p.droneTarget=nearestDrone;setHostileVelocity(p,nearestDrone.x,nearestDrone.y,e.kind==EnemyKind.BOSS?520f:420f);hostileProjectiles.add(p);return;}
-        Turret nearestTurret=null;float turretBest=99999999f;
-        for(int i=0;i<turrets.size;i++){Turret q=turrets.get(i);if(q.broken)continue;float ds=dist2(e.x,e.y,q.x,q.y);if(ds<turretBest){turretBest=ds;nearestTurret=q;}}
-        if(nearestTurret!=null){p.turretTarget=nearestTurret;setHostileVelocity(p,nearestTurret.x,nearestTurret.y,e.kind==EnemyKind.BOSS?520f:420f);hostileProjectiles.add(p);}
+        int volley=e.archetype==EnemyArchetype.STAR?3:1;
+        for(int shot=0;shot<volley;shot++){
+            HostileProjectile p=new HostileProjectile();p.x=e.x+(shot-1)*9f;p.y=e.y;p.damage=dmg;p.r=e.kind==EnemyKind.BOSS?10f:7f;
+            float roll=MathUtils.random();
+            if(e.archetype==EnemyArchetype.INFECTOR)p.attackKind=EnemyAttackKind.PARASITE;
+            else if(save.wave>=8 && (e.kind==EnemyKind.ELITE||e.kind==EnemyKind.BOSS) && roll<.18f)p.attackKind=EnemyAttackKind.PARASITE;
+            else if(save.wave>=5 && roll<.38f)p.attackKind=EnemyAttackKind.CORROSION;
+            else if(save.wave>=10 && roll<.50f)p.attackKind=EnemyAttackKind.DISRUPTION;
+            else p.attackKind=EnemyAttackKind.NORMAL;
+            if(p.attackKind==EnemyAttackKind.PARASITE)p.damage*=.35f;else if(p.attackKind==EnemyAttackKind.CORROSION)p.damage*=.55f;else if(p.attackKind==EnemyAttackKind.DISRUPTION)p.damage*=.45f;
+
+            // Kamikaze drones are an obvious incoming bomb, so aliens prioritize them when visible.
+            Drone nearestDrone=null;float droneBest=Float.MAX_VALUE;
+            for(int i=0;i<drones.size;i++){
+                Drone q=drones.get(i);if(!q.alive)continue;float ds=dist2(e.x,e.y,q.x,q.y);
+                float score=ds*(q.type==DroneType.KAMIKAZE?.18f:1f);
+                if(p.attackKind==EnemyAttackKind.PARASITE)score*=.62f;
+                if(score<droneBest){droneBest=score;nearestDrone=q;}
+            }
+            if(nearestDrone!=null && (p.attackKind==EnemyAttackKind.PARASITE || droneBest<520f*520f)){
+                p.droneTarget=nearestDrone;setHostileVelocity(p,nearestDrone.x,nearestDrone.y,e.kind==EnemyKind.BOSS?540f:430f);hostileProjectiles.add(p);continue;
+            }
+            Turret nearestTurret=null;float turretBest=Float.MAX_VALUE;
+            for(int i=0;i<turrets.size;i++){Turret q=turrets.get(i);if(q.broken)continue;float ds=dist2(e.x,e.y,q.x,q.y);if(ds<turretBest){turretBest=ds;nearestTurret=q;}}
+            if(nearestTurret!=null){p.turretTarget=nearestTurret;setHostileVelocity(p,nearestTurret.x,nearestTurret.y,e.kind==EnemyKind.BOSS?540f:430f);hostileProjectiles.add(p);}
+        }
     }
 
     private boolean hasDroneNear(float x,float y,float radius){float r2=radius*radius;for(int i=0;i<drones.size;i++){Drone d=drones.get(i);if(d.alive&&dist2(x,y,d.x,d.y)<r2)return true;}return false;}
@@ -441,51 +570,126 @@ public class GameScreen extends ScreenAdapter {
     }
 
     private void updateDrones(float d){
-        final float detectRange=620f; // intentionally about half the old range: drones must enter the fight.
+        final float detectRange=620f; // normal targets: drones must fly into the fight.
         for(int di=0;di<drones.size;di++){
             Drone dr=drones.get(di);
-            if(!dr.alive){dr.respawn-=d;if(dr.respawn<=0){dr.alive=true;dr.shield=dr.maxShield;dr.cooldown=.6f;dr.target=null;dr.x=540f+MathUtils.random(-150f,150f);dr.y=270f+MathUtils.random(0f,70f);burst(dr.x,dr.y,Ui.CYAN,18);}continue;}
-            if(dr.corrosionTime>0f){dr.corrosionTime-=d;dr.shield-=Math.max(1.2f,dr.maxShield*.02f)*d;if(dr.shield<=0){killDrone(dr);continue;}}
+            if(!dr.alive){
+                dr.respawn-=d;
+                if(dr.respawn<=0){
+                    dr.alive=true;dr.shield=dr.maxShield;dr.cooldown=.6f;dr.target=null;dr.supportTarget=null;
+                    // Every respawn comes from the planet/base area.
+                    dr.x=540f+MathUtils.random(-150f,150f);dr.y=270f+MathUtils.random(0f,70f);
+                    burst(dr.x,dr.y,Ui.CYAN,18);
+                }
+                continue;
+            }
+            if(dr.corrosionTime>0f){
+                dr.corrosionTime-=d;dr.shield-=Math.max(1.2f,dr.maxShield*.02f)*d;
+                if(dr.shield<=0){killDrone(dr);continue;}
+            }
             if(dr.jamTime>0f)dr.jamTime-=d;
-            if(dr.infectionHits>0){dr.cooldown-=d;if(dr.cooldown<=0f){infectedDroneAttack(dr);dr.cooldown=.65f;}continue;}
+            if(dr.infectionHits>0){
+                dr.cooldown-=d;if(dr.cooldown<=0f){infectedDroneAttack(dr);dr.cooldown=.65f;}continue;
+            }
+
             dr.angle+=d*dr.orbitSpeed;
             float oldX=dr.x,oldY=dr.y;
-            if(dr.target==null||dr.target.dead||dist2(dr.x,dr.y,dr.target.x,dr.target.y)>detectRange*detectRange*1.5f)dr.target=nearestEnemy(dr.x,dr.y,detectRange);
+
+            // Support drones have global awareness of damaged allies and immediately fly to them.
+            if(dr.type==DroneType.SUPPORT){
+                dr.supportTarget=mostDamagedDrone(dr);
+                if(dr.supportTarget!=null){
+                    float dx=dr.supportTarget.x-dr.x,dy=dr.supportTarget.y-dr.y,len=(float)Math.sqrt(dx*dx+dy*dy);
+                    float desired=105f;
+                    if(len>desired){
+                        float speed=220f+save.droneRateLevel*3.5f;
+                        dr.x+=dx/Math.max(1f,len)*speed*d;dr.y+=dy/Math.max(1f,len)*speed*d;
+                    }else{
+                        float tangent=28f*d;dr.x+=-dy/Math.max(1f,len)*tangent;dr.y+=dx/Math.max(1f,len)*tangent;
+                    }
+                }else{
+                    moveDroneOnPatrol(dr,d);
+                }
+                dr.x=MathUtils.clamp(dr.x,55f,W-55f);dr.y=MathUtils.clamp(dr.y,245f,1500f);
+                if(dist2(oldX,oldY,dr.x,dr.y)>.01f)dr.heading=MathUtils.atan2(dr.y-oldY,dr.x-oldX);
+                dr.cooldown-=d;dr.auraTick-=d;
+                if(dr.jamTime<=0f)healNearbyDrones(dr,d);
+                continue;
+            }
+
+            // A live boss is a global priority target. Timed boss fights must never be lost because a drone did not "see" it.
+            if(bossActive && bossEnemy!=null && !bossEnemy.dead){
+                dr.target=bossEnemy;
+            }else if(dr.target==null||dr.target.dead||dist2(dr.x,dr.y,dr.target.x,dr.target.y)>detectRange*detectRange*1.5f){
+                dr.target=nearestEnemy(dr.x,dr.y,detectRange);
+            }
 
             if(dr.type==DroneType.KAMIKAZE && dr.target!=null){
                 float dx=dr.target.x-dr.x,dy=dr.target.y-dr.y,len=(float)Math.sqrt(dx*dx+dy*dy);
                 if(len<dr.target.r+29f){
                     float boom=(7f+save.droneDamageLevel*1.6f)*save.generalDamageMultiplier()*(1f+save.droneSkillLevel*.008f)*5.5f;
-                    aoe(dr.target.x,dr.target.y,135,boom,save.droneElement);gainSkill("drone",boom);explode(dr.target.x,dr.target.y,elementColor(save.droneElement),40);killDrone(dr);dr.target=null;game.assets.play(game.assets.explosion,game.settings,.25f);vibrate(22);continue;
+                    aoe(dr.target.x,dr.target.y,135,boom,save.droneElement);gainSkill("drone",boom);
+                    explode(dr.target.x,dr.target.y,elementColor(save.droneElement),40);killDrone(dr);dr.target=null;
+                    game.assets.play(game.assets.explosion,game.settings,.25f);vibrate(22);continue;
                 }
-                float speed=355f+save.droneRateLevel*7f;dr.x+=dx/Math.max(1f,len)*speed*d;dr.y+=dy/Math.max(1f,len)*speed*d;dr.heading=MathUtils.atan2(dy,dx);applyDroneAura(dr,d);continue;
+                float speed=355f+save.droneRateLevel*7f;
+                dr.x+=dx/Math.max(1f,len)*speed*d;dr.y+=dy/Math.max(1f,len)*speed*d;
+                dr.heading=MathUtils.atan2(dy,dx);applyDroneAura(dr,d);continue;
             }
 
-            if(dr.target!=null && dr.type!=DroneType.SUPPORT){
+            if(dr.target!=null){
                 // Gun/missile drones close to standoff range instead of firing from the other side of the screen.
                 float dx=dr.target.x-dr.x,dy=dr.target.y-dr.y,len=(float)Math.sqrt(dx*dx+dy*dy);float desired=145f;
-                if(len>desired){float speed=185f+save.droneRateLevel*3.5f;dr.x+=dx/Math.max(1f,len)*speed*d;dr.y+=dy/Math.max(1f,len)*speed*d;}
-                else {float tangent=55f*d;dr.x+=-dy/Math.max(1f,len)*tangent;dr.y+=dx/Math.max(1f,len)*tangent;}
+                if(len>desired){
+                    float speed=185f+save.droneRateLevel*3.5f;
+                    dr.x+=dx/Math.max(1f,len)*speed*d;dr.y+=dy/Math.max(1f,len)*speed*d;
+                }else{
+                    float tangent=55f*d;dr.x+=-dy/Math.max(1f,len)*tangent;dr.y+=dx/Math.max(1f,len)*tangent;
+                }
             }else{
-                float baseX=540+dr.centerOffsetX+MathUtils.cos(dr.angle+dr.orbitPhase)*dr.orbitRadiusX+MathUtils.sin(dr.angle*.43f+dr.orbitPhase)*58f;
-                float baseY=650+dr.centerOffsetY+MathUtils.sin(dr.angle*.71f+dr.orbitPhase)*dr.orbitRadiusY+MathUtils.cos(dr.angle*.37f)*38f;
-                baseX=MathUtils.clamp(baseX,85f,W-85f);baseY=MathUtils.clamp(baseY,340f,1120f);
-                float move=Math.min(1f,d*(.75f+dr.type.ordinal()*.08f));dr.x=MathUtils.lerp(dr.x,baseX,move);dr.y=MathUtils.lerp(dr.y,baseY,move);
+                moveDroneOnPatrol(dr,d);
             }
+
             dr.x=MathUtils.clamp(dr.x,55f,W-55f);dr.y=MathUtils.clamp(dr.y,245f,1500f);
             if(dist2(oldX,oldY,dr.x,dr.y)>.01f)dr.heading=MathUtils.atan2(dr.y-oldY,dr.x-oldX);
             dr.cooldown-=d;dr.auraTick-=d;applyDroneAura(dr,d);
             if(dr.jamTime>0f)continue;
-            if(dr.type==DroneType.SUPPORT){healNearbyDrones(dr,d);continue;}
             if(dr.cooldown>0||dr.target==null)continue;
+
             int near=nearbyDroneCount(dr,190);
             float auraDamage=1f+(save.droneAuraElement==Element.FIRE?near*.07f:near*.02f);
             float auraRate=1f+(save.droneAuraElement==Element.LIGHTNING?near*.07f:save.droneAuraElement==Element.ICE?near*.03f:0f);
             float rate=(1f+save.droneRateLevel*.18f)*save.generalRateMultiplier()*auraRate*(1f+save.droneSkillLevel*.006f)*(overdriveTime>0?1.55f:1f);
             float dmg=(7f+save.droneDamageLevel*1.6f)*save.generalDamageMultiplier()*auraDamage*(1f+save.droneSkillLevel*.008f);
-            if(dr.type==DroneType.GUN){fireProjectile(dr.x,dr.y,dr.target,dmg,save.droneElement,ShotKind.BULLET,0);gainSkill("drone",dmg);dr.cooldown=Math.max(.06f,.55f/rate);game.assets.play(game.assets.shot,game.settings,.055f);}
-            else if(dr.type==DroneType.MISSILE){fireProjectile(dr.x,dr.y,dr.target,dmg*1.9f,save.droneElement,ShotKind.ROCKET,62+save.droneAuraLevel*3);gainSkill("drone",dmg*1.9f);dr.cooldown=Math.max(.22f,1.5f/rate);game.assets.play(game.assets.rocket,game.settings,.08f);}
+            if(dr.type==DroneType.GUN){
+                fireProjectile(dr.x,dr.y,dr.target,dmg,save.droneElement,ShotKind.BULLET,0);gainSkill("drone",dmg);
+                dr.cooldown=Math.max(.06f,.55f/rate);game.assets.play(game.assets.shot,game.settings,.055f);
+            }else if(dr.type==DroneType.MISSILE){
+                fireProjectile(dr.x,dr.y,dr.target,dmg*1.9f,save.droneElement,ShotKind.ROCKET,62+save.droneAuraLevel*3);gainSkill("drone",dmg*1.9f);
+                dr.cooldown=Math.max(.22f,1.5f/rate);game.assets.play(game.assets.rocket,game.settings,.08f);
+            }
         }
+    }
+
+    private void moveDroneOnPatrol(Drone dr,float d){
+        float baseX=540+dr.centerOffsetX+MathUtils.cos(dr.angle+dr.orbitPhase)*dr.orbitRadiusX+MathUtils.sin(dr.angle*.43f+dr.orbitPhase)*58f;
+        float baseY=650+dr.centerOffsetY+MathUtils.sin(dr.angle*.71f+dr.orbitPhase)*dr.orbitRadiusY+MathUtils.cos(dr.angle*.37f)*38f;
+        baseX=MathUtils.clamp(baseX,85f,W-85f);baseY=MathUtils.clamp(baseY,340f,1120f);
+        float move=Math.min(1f,d*(.75f+dr.type.ordinal()*.08f));
+        dr.x=MathUtils.lerp(dr.x,baseX,move);dr.y=MathUtils.lerp(dr.y,baseY,move);
+    }
+
+    private Drone mostDamagedDrone(Drone support){
+        Drone best=null;float bestRatio=1.001f;float bestDist=Float.MAX_VALUE;
+        for(int i=0;i<drones.size;i++){
+            Drone d=drones.get(i);
+            if(d==support||!d.alive||d.maxShield<=0f||d.shield>=d.maxShield-.5f)continue;
+            float ratio=d.shield/d.maxShield;float dd=dist2(support.x,support.y,d.x,d.y);
+            if(ratio<bestRatio-.02f || (Math.abs(ratio-bestRatio)<.02f && dd<bestDist)){
+                best=d;bestRatio=ratio;bestDist=dd;
+            }
+        }
+        return best;
     }
 
     private void infectedTurretAttack(Turret source){
@@ -495,7 +699,8 @@ public class GameScreen extends ScreenAdapter {
     }
     private void infectedDroneAttack(Drone source){
         Turret t=nearestFriendlyTurret(source.x,source.y,null);Drone d=nearestFriendlyDroneExcept(source.x,source.y,source);HostileProjectile p=new HostileProjectile();p.x=source.x;p.y=source.y;p.damage=4.5f+save.wave*.25f;p.attackKind=EnemyAttackKind.PARASITE;p.r=5f;
-        if(t!=null&&(d==null||dist2(source.x,source.y,t.x,t.y)<dist2(source.x,source.y,d.x,d.y))){p.turretTarget=t;setHostileVelocity(p,t.x,t.y,500f);hostileProjectiles.add(p);}
+        if(MathUtils.random()<.28f || (t==null&&d==null)){p.planetTarget=true;setHostileVelocity(p,540f,GROUND_Y+8f,500f);hostileProjectiles.add(p);}
+        else if(t!=null&&(d==null||dist2(source.x,source.y,t.x,t.y)<dist2(source.x,source.y,d.x,d.y))){p.turretTarget=t;setHostileVelocity(p,t.x,t.y,500f);hostileProjectiles.add(p);}
         else if(d!=null){p.droneTarget=d;setHostileVelocity(p,d.x,d.y,500f);hostileProjectiles.add(p);}
     }
     private Turret nearestFriendlyTurret(float x,float y,Turret exclude){Turret best=null;float bd=Float.MAX_VALUE;for(int i=0;i<turrets.size;i++){Turret t=turrets.get(i);if(t==exclude||t.broken)continue;float dd=dist2(x,y,t.x,t.y);if(dd<bd){bd=dd;best=t;}}return best;}
@@ -546,6 +751,8 @@ public class GameScreen extends ScreenAdapter {
                 applyAlienHit(p.droneTarget,p);hit=true;
             }else if(p.turretTarget!=null && !p.turretTarget.broken && dist2(p.x,p.y,p.turretTarget.x,p.turretTarget.y)<(p.r+40f)*(p.r+40f)){
                 applyAlienHit(p.turretTarget,p);hit=true;
+            }else if(p.planetTarget && p.y<=GROUND_Y+26f){
+                save.integrity-=Math.max(1.5f,p.damage*.55f);hit=true;vibrate(8);
             }
             if(hit){burst(p.x,p.y,alienAttackColor(p.attackKind),9);hostileProjectiles.removeIndex(i);}
             else if(p.life<=0||p.x<-30||p.x>W+30||p.y<-30||p.y>H+50)hostileProjectiles.removeIndex(i);
@@ -713,14 +920,26 @@ public class GameScreen extends ScreenAdapter {
     private void aoe(float x,float y,float r,float dmg,Element elem){for(int i=0;i<enemies.size;i++){Enemy e=enemies.get(i);if(!e.dead&&dist2(x,y,e.x,e.y)<(r+e.r)*(r+e.r))dealDamage(e,dmg,elem,true);}}
 
     private void dealDamage(Enemy e,float dmg,Element elem,boolean chain){
-        if(e==null||e.dead)return;damageRaw(e,dmg);elementImpact(e,elem,dmg);
-        if(elem==Element.FIRE){e.burnDps=Math.max(e.burnDps,dmg*.14f);e.burnTime=Math.max(e.burnTime,3.3f);}
-        else if(elem==Element.ICE){e.chill+=1f;e.slow=.56f;e.slowTime=Math.max(e.slowTime,2.2f);if(e.chill>=4f){e.freezeTime=Math.max(e.freezeTime,1.1f);e.chill=1.5f;}if(chain)game.assets.play(game.assets.ice,game.settings,.035f);}
+        if(e==null||e.dead)return;
+        float mult=directDamageMultiplier(e,elem);float applied=dmg*mult;damageRaw(e,applied);elementImpact(e,elem,applied);
+        if(elem==Element.FIRE){float burnRes=e.resistElement==Element.FIRE?.30f:1f;e.burnDps=Math.max(e.burnDps,dmg*.14f*burnRes);e.burnTime=Math.max(e.burnTime,3.3f*burnRes+.7f);}
+        else if(elem==Element.ICE){e.chill+=Math.max(.25f,mult);e.slow=Math.max(.72f,.56f+(1f-mult)*.22f);e.slowTime=Math.max(e.slowTime,2.2f);if(e.chill>=4f){e.freezeTime=Math.max(e.freezeTime,1.1f*mult);e.chill=1.5f;}if(chain)game.assets.play(game.assets.ice,game.settings,.035f);}
         else if(elem==Element.LIGHTNING&&chain){chainLightning(e,dmg*.62f,2+(hasLightning()?1:0));game.assets.play(game.assets.electric,game.settings,.045f);}
+    }
+    private float directDamageMultiplier(Enemy target,Element elem){
+        float m=1f;
+        if(target.resistElement==elem && elem!=Element.NEUTRAL)m*=.30f;
+        for(int i=0;i<enemies.size;i++){
+            Enemy aura=enemies.get(i);if(aura.dead||aura==target||aura.auraRadius<=0f)continue;
+            if(dist2(target.x,target.y,aura.x,aura.y)>aura.auraRadius*aura.auraRadius)continue;
+            if(aura.archetype==EnemyArchetype.GUARDIAN)m*=1f-aura.auraReduction;
+            else if(aura.archetype==EnemyArchetype.ELEMENT_WARD && elem!=Element.NEUTRAL && elem!=Element.GRAVITY)m*=1f-aura.auraReduction;
+        }
+        return MathUtils.clamp(m,.08f,1f);
     }
     private void damageRaw(Enemy e,float dmg){e.hp-=dmg;if(e.hp<=0&&!e.dead)killEnemy(e);}
     private void chainLightning(Enemy from,float dmg,int jumps){
-        Enemy cur=from;Array<Enemy> used=new Array<>();used.add(from);for(int j=0;j<jumps;j++){Enemy next=null;float best=250*250;for(int i=0;i<enemies.size;i++){Enemy e=enemies.get(i);if(e.dead||used.contains(e,true))continue;float dd=dist2(cur.x,cur.y,e.x,e.y);if(dd<best){best=dd;next=e;}}if(next==null)break;lightningArc(cur.x,cur.y,next.x,next.y);damageRaw(next,dmg*(1f-j*.13f));used.add(next);cur=next;}
+        Enemy cur=from;Array<Enemy> used=new Array<>();used.add(from);for(int j=0;j<jumps;j++){Enemy next=null;float best=250*250;for(int i=0;i<enemies.size;i++){Enemy e=enemies.get(i);if(e.dead||used.contains(e,true))continue;float dd=dist2(cur.x,cur.y,e.x,e.y);if(dd<best){best=dd;next=e;}}if(next==null)break;lightningArc(cur.x,cur.y,next.x,next.y);dealDamage(next,dmg*(1f-j*.13f),Element.LIGHTNING,false);used.add(next);cur=next;}
     }
 
     private void lightningArc(float x1,float y1,float x2,float y2){
@@ -740,8 +959,17 @@ public class GameScreen extends ScreenAdapter {
 
 
     private void killEnemy(Enemy e){
-        e.dead=true;save.credits+=e.reward;save.totalKills++;if(e.kind==EnemyKind.BOSS){save.totalBossKills++;bossActive=false;bossEnemy=null;bossTimer=0;if(save.totalBossKills==5){banner=game.assets.t("new_technology")+" — "+game.assets.t("effects");bannerTime=3.2f;}else{banner=game.assets.t("boss_destroyed");bannerTime=2.5f;}}
+        e.dead=true;save.credits+=e.reward;save.totalKills++;recordBestiaryKill(e);if(e.kind==EnemyKind.BOSS){save.totalBossKills++;bossActive=false;bossEnemy=null;bossTimer=0;if(save.totalBossKills==5){banner=game.assets.t("new_technology")+" — "+game.assets.t("effects");bannerTime=3.2f;}else{banner=game.assets.t("boss_destroyed");bannerTime=2.5f;}}
         explode(e.x,e.y,colorFor(e),e.kind==EnemyKind.BOSS?65:(e.kind==EnemyKind.TANK||e.kind==EnemyKind.ELITE?30:16));game.assets.play(e.kind==EnemyKind.BOSS?game.assets.explosion:game.assets.pop,game.settings,e.kind==EnemyKind.BOSS?.55f:.09f);if(e.kind==EnemyKind.BOSS)vibrate(120);
+    }
+
+    private void recordBestiaryKill(Enemy e){
+        switch(e.archetype){
+            case FAST -> save.bestiaryFast++;case TANK -> save.bestiaryTank++;case ELITE -> save.bestiaryElite++;case STAR -> save.bestiaryStar++;
+            case GUARDIAN -> save.bestiaryGuardian++;case PHASE -> save.bestiaryPhase++;case FIRE_RESIST -> save.bestiaryFireResist++;
+            case ICE_RESIST -> save.bestiaryIceResist++;case LIGHTNING_RESIST -> save.bestiaryLightningResist++;case ELEMENT_WARD -> save.bestiaryWard++;
+            case INFECTOR -> save.bestiaryInfector++;case BOSS -> save.bestiaryBoss++;default -> save.bestiaryBasic++;
+        }
     }
 
     private Enemy nearestEnemy(float x,float y,float max){Enemy bestE=null;float best=max*max;for(Enemy e:enemies){if(e.dead)continue;float d=dist2(x,y,e.x,e.y);if(d<best){best=d;bestE=e;}}return bestE;}
@@ -777,14 +1005,19 @@ public class GameScreen extends ScreenAdapter {
         d.heading=0f;d.maxShield=60+save.droneShieldLevel*15;d.shield=d.maxShield;d.cooldown=.4f+index*.12f;return d;
     }
 
-    private void resetSlot(){SaveData fresh=game.saves.fresh(save.slot);game.saves.save(fresh);game.changeScreen(new GameScreen(game,fresh));}
+    private void resetSlot(){SaveData fresh=game.saves.fresh(save.slot);fresh.difficulty=save.difficulty;game.saves.save(fresh);game.changeScreen(new GameScreen(game,fresh));}
     private void defeat(){if(defeated)return;defeated=true;save.integrity=0;game.saves.save(save);vibrate(180);}
 
     private void draw(){
         viewport.apply();camera.update();Gdx.gl.glClearColor(Ui.BG.r,Ui.BG.g,Ui.BG.b,1);Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
         sr.setProjectionMatrix(camera.combined);batch.setProjectionMatrix(camera.combined);
         Gdx.gl.glEnable(GL20.GL_BLEND);Gdx.gl.glBlendFunc(GL20.GL_SRC_ALPHA,GL20.GL_ONE_MINUS_SRC_ALPHA);
-        sr.begin(ShapeRenderer.ShapeType.Filled);drawBackground();drawGround();drawHoles();drawEnemies();drawFingerCharge();drawTrails();drawShockwaves();drawBonuses();drawProjectiles();drawHostileProjectiles();drawTurrets();drawDrones();drawParticles();drawBeams();sr.end();
+        // Background first, then the boss countdown behind all combat objects.
+        sr.begin(ShapeRenderer.ShapeType.Filled);drawBackground();sr.end();
+        if(bossActive)drawBossCountdownBackdrop();
+        // SpriteBatch/ShapeRenderer switching on some Android GPUs can leave blending state dirty. Reassert it.
+        Gdx.gl.glEnable(GL20.GL_BLEND);Gdx.gl.glBlendFunc(GL20.GL_SRC_ALPHA,GL20.GL_ONE_MINUS_SRC_ALPHA);
+        sr.begin(ShapeRenderer.ShapeType.Filled);drawGround();drawHoles();drawEnemies();drawFingerCharge();drawTrails();drawShockwaves();drawBonuses();drawProjectiles();drawHostileProjectiles();drawTurrets();drawDrones();drawParticles();drawBeams();sr.end();
         drawBonusIcons();
         drawHud();
         if(bannerTime>0)drawBanner();
@@ -795,6 +1028,17 @@ public class GameScreen extends ScreenAdapter {
         if(paused)drawPause();
         if(defeated)drawDefeat();
         if(uiPulseTime>0f)drawUiPulse();
+    }
+
+
+    private void drawBossCountdownBackdrop(){
+        if(!bossActive)return;
+        int seconds=Math.max(0,(int)Math.ceil(bossTimer));String text=Integer.toString(seconds);
+        boolean urgent=seconds<=10;float pulse=urgent?(0.17f+0.045f*(.5f+.5f*MathUtils.sin(save.playSeconds*8f))):0.105f;
+        Color c=urgent?new Color(1f,.16f,.18f,pulse):new Color(.72f,.82f,.95f,pulse);
+        batch.begin();
+        Ui.centered(batch,game.assets.font,text,new Rectangle(0,650,W,620),urgent?7.2f:6.8f,c);
+        batch.end();
     }
 
     private void drawBackground(){
@@ -816,7 +1060,7 @@ public class GameScreen extends ScreenAdapter {
         for(int i=0;i<13;i++){float x=(i*83f+113f)%W,y=GROUND_Y+((i*247f+660f)%(H-GROUND_Y-120));sr.setColor(.25f,.72f,1f,.12f);sr.circle(x,y,7f+(i%3)*4f,18);}
         sr.setColor(.05f,.65f,1f,.028f);sr.circle(540,80,620,64);
     }
-    private void drawGround(){sr.setColor(.04f,.55f,.9f,.18f);sr.rect(0,0,W,GROUND_Y);sr.setColor(Ui.CYAN);sr.rect(0,GROUND_Y,W,3);}
+    private void drawGround(){sr.setColor(.006f,.055f,.078f,1f);sr.rect(0,0,W,GROUND_Y);sr.setColor(Ui.CYAN);sr.rect(0,GROUND_Y,W,3);}
 
     private void drawEnemies(){
         for(Enemy e:enemies){
@@ -831,12 +1075,17 @@ public class GameScreen extends ScreenAdapter {
             if(e.burnTime>0)drawBurningEnemy(e);
             if(e.slow<1f||e.freezeTime>0)drawFrozenEnemy(e);
             if(e.tapShieldTime>0f)drawTapShield(e);
+            drawEnemySpecialFx(e);
             if(e.r>34){sr.setColor(.04f,.06f,.09f,.92f);sr.rect(e.x-e.r,e.y+e.r+12,e.r*2,6);sr.setColor(hp>.35f?Ui.GREEN:Ui.RED);sr.rect(e.x-e.r,e.y+e.r+12,e.r*2*hp,6);}
         }
     }
 
     private void drawEnemyShape(Enemy e,float r){
+        if(e.archetype==EnemyArchetype.STAR){filledStar(e.x,e.y,r,r*.45f,5,save.playSeconds*.22f);return;}
         if(e.shapeSides<3){sr.circle(e.x,e.y,r,40);return;}filledRegularPolygon(e.x,e.y,r,e.shapeSides,save.playSeconds*.18f+(e.x+e.y)*.001f);
+    }
+    private void filledStar(float cx,float cy,float outer,float inner,int points,float rot){
+        int n=points*2;for(int i=0;i<n;i++){float a1=rot+i*MathUtils.PI2/n,a2=rot+(i+1)*MathUtils.PI2/n;float r1=(i%2==0)?outer:inner,r2=((i+1)%2==0)?outer:inner;sr.triangle(cx,cy,cx+MathUtils.cos(a1)*r1,cy+MathUtils.sin(a1)*r1,cx+MathUtils.cos(a2)*r2,cy+MathUtils.sin(a2)*r2);}
     }
     private void filledRegularPolygon(float cx,float cy,float r,int sides,float rot){
         for(int i=0;i<sides;i++){float a1=rot+i*MathUtils.PI2/sides,a2=rot+(i+1)*MathUtils.PI2/sides;sr.triangle(cx,cy,cx+MathUtils.cos(a1)*r,cy+MathUtils.sin(a1)*r,cx+MathUtils.cos(a2)*r,cy+MathUtils.sin(a2)*r);}
@@ -851,6 +1100,17 @@ public class GameScreen extends ScreenAdapter {
     }
     private void drawTapShield(Enemy e){
         float r=e.r*1.45f*(1f+.03f*MathUtils.sin(save.playSeconds*9f));sr.setColor(.55f,.92f,1f,.12f);if(e.shapeSides>=3)filledRegularPolygon(e.x,e.y,r,Math.max(6,e.shapeSides),save.playSeconds*.45f);else sr.circle(e.x,e.y,r,40);sr.setColor(.8f,.98f,1f,.55f);for(int i=0;i<8;i++){float a=i*MathUtils.PI2/8f+save.playSeconds*.4f;sr.circle(e.x+MathUtils.cos(a)*r,e.y+MathUtils.sin(a)*r,3.2f,10);}
+    }
+    private void drawEnemySpecialFx(Enemy e){
+        if(e.archetype==EnemyArchetype.GUARDIAN){
+            float r=e.auraRadius;sr.setColor(.18f,.95f,.78f,.035f);sr.circle(e.x,e.y,r,48);for(int i=0;i<14;i++){float a=i*MathUtils.PI2/14f-save.playSeconds*.35f;sr.setColor(.25f,1f,.78f,.50f);sr.circle(e.x+MathUtils.cos(a)*r,e.y+MathUtils.sin(a)*r,3.2f,8);}
+        }else if(e.archetype==EnemyArchetype.ELEMENT_WARD){
+            float r=e.auraRadius;sr.setColor(.58f,.26f,1f,.025f);sr.circle(e.x,e.y,r,48);Color[] cs={FIRE,ICE,ELEC};for(int i=0;i<12;i++){float a=i*MathUtils.PI2/12f+save.playSeconds*.38f;Color c=cs[i%3];sr.setColor(c.r,c.g,c.b,.56f);sr.circle(e.x+MathUtils.cos(a)*r,e.y+MathUtils.sin(a)*r,3.6f,8);}
+        }else if(e.resistElement!=Element.NEUTRAL){
+            Color c=elementColor(e.resistElement);float r=e.r*1.38f;for(int i=0;i<3;i++){float a=i*MathUtils.PI2/3f+save.playSeconds*.85f;float x=e.x+MathUtils.cos(a)*r,y=e.y+MathUtils.sin(a)*r;sr.setColor(c.r,c.g,c.b,.82f);filledRegularPolygon(x,y,8f,4,a);}
+        }else if(e.archetype==EnemyArchetype.INFECTOR){
+            for(int i=0;i<5;i++){float a=i*MathUtils.PI2/5f-save.playSeconds*.9f;float r=e.r*1.28f;sr.setColor(.92f,.16f,1f,.68f);sr.circle(e.x+MathUtils.cos(a)*r,e.y+MathUtils.sin(a)*r,3.5f,8);}
+        }
     }
 
     private void drawFingerCharge(){
@@ -1027,19 +1287,18 @@ public class GameScreen extends ScreenAdapter {
         }
         // Bottom action buttons moved down so they do not crowd the planet HP bar.
         sr.setColor(1,1,1,.76f);sr.rect(42,28,10,54);sr.rect(68,28,10,54);
-        float[] cx={742,862,982};for(float c:cx){sr.setColor(.01f,.04f,.075f,.76f);sr.circle(c,58,46,32);sr.setColor(Ui.CYAN.r,Ui.CYAN.g,Ui.CYAN.b,.15f);sr.circle(c,58,51,32);}
+        float[] cx={770,875,980};for(float c:cx){sr.setColor(.01f,.04f,.075f,.76f);sr.circle(c,48,42,32);sr.setColor(Ui.CYAN.r,Ui.CYAN.g,Ui.CYAN.b,.15f);sr.circle(c,48,47,32);}
         sr.end();
         batch.begin();
         String creditText=cheatsEnabled()?"C ∞":"C "+(long)save.credits;
         float cw=game.assets.font.width(creditText,.78f);Ui.text(batch,game.assets.font,creditText,W-34-cw,1838,.78f,Ui.GOLD);
         String income="+"+String.format(java.util.Locale.US,"%.1f",save.passiveIncomePerSecond())+"/s";
         float iw=game.assets.font.width(income,.49f);Ui.text(batch,game.assets.font,income,W-34-iw,1788,.49f,new Color(.58f,.82f,.92f,.94f));
-        if(bossActive)Ui.text(batch,game.assets.font,String.format(java.util.Locale.US,"%.0fs",bossTimer),910,1847,.42f,Ui.RED);
         if(overdriveTime>0)Ui.text(batch,game.assets.font,"BOOST "+String.format(java.util.Locale.US,"%.0fs",overdriveTime),32,174,.38f,ELEC);
-        if(hasAnnihilation()){String st=annihilationCooldown>0f?game.assets.t("annihilation_recharge")+" "+String.format(java.util.Locale.US,"%.0fs",annihilationCooldown):game.assets.t("annihilation_ready");Ui.centered(batch,game.assets.font,st,new Rectangle(250,48,580,40),.42f,annihilationCooldown>0f?new Color(.55f,.74f,.9f,1):ELEC);}
-        Texture deb=game.assets.icon("debuff_button");if(deb!=null)batch.draw(deb,710,24,64,64);
-        if(effectsSystemUnlocked()){Texture cfg=game.assets.icon("config");if(cfg!=null)batch.draw(cfg,830,24,64,64);}
-        Texture shp=game.assets.icon("shop_button");if(shp!=null)batch.draw(shp,950,24,64,64);
+        if(hasAnnihilation()){String st=annihilationCooldown>0f?game.assets.t("annihilation_recharge")+" "+String.format(java.util.Locale.US,"%.0fs",annihilationCooldown):game.assets.t("annihilation_ready");Ui.centered(batch,game.assets.font,st,new Rectangle(220,45,500,40),.42f,annihilationCooldown>0f?new Color(.55f,.74f,.9f,1):ELEC);}
+        Texture deb=game.assets.icon("debuff_button");if(deb!=null)batch.draw(deb,741,19,58,58);
+        if(effectsSystemUnlocked()){Texture cfg=game.assets.icon("config");if(cfg!=null)batch.draw(cfg,846,19,58,58);}
+        Texture shp=game.assets.icon("shop_button");if(shp!=null)batch.draw(shp,951,19,58,58);
         batch.end();
     }
     private void drawBanner(){
@@ -1059,38 +1318,107 @@ public class GameScreen extends ScreenAdapter {
     private void drawOverlay(){sr.begin(ShapeRenderer.ShapeType.Filled);sr.setColor(0,0,0,.72f);sr.rect(0,0,W,H);sr.end();}
     private void drawOverlayButton(Rectangle r,String text,boolean enabled){sr.begin(ShapeRenderer.ShapeType.Filled);Ui.button(sr,r,enabled,false);sr.end();batch.begin();Ui.centered(batch,game.assets.font,text,r,.82f,Color.WHITE);batch.end();}
 
+    // Unified dark-glass language used by every in-game shop/config screen.
+    // Important: shop fills use deliberately dark RGB values instead of relying on alpha blending.
+    // ShapeRenderer alpha is not guaranteed to blend in every path/device, which previously produced
+    // the heavy cyan/orange/red blocks seen on Android. Colour is now an accent, never the surface.
+    private Color uiShade(Color c,float k){return new Color(c.r*k,c.g*k,c.b*k,1f);}
+    private void drawShopSheet(Rectangle r,Color accent){
+        sr.begin(ShapeRenderer.ShapeType.Filled);
+        sr.setColor(.006f,.014f,.024f,1f);sr.rect(r.x,r.y,r.width,r.height);
+        sr.setColor(.010f,.029f,.043f,1f);sr.rect(r.x,r.y+r.height-155f,r.width,155f);
+        sr.setColor(uiShade(accent,.72f));sr.rect(r.x,r.y+r.height-3f,r.width,3f);
+        sr.setColor(uiShade(accent,.22f));sr.rect(r.x,r.y,4f,r.height);
+        sr.setColor(.045f,.095f,.125f,1f);sr.rect(r.x+28f,r.y+145f,r.width-56f,2f);
+        // faint lower edge keeps the sheet visually continuous without boxing it in
+        sr.setColor(.018f,.050f,.067f,1f);sr.rect(r.x+18f,r.y,r.width-36f,1.5f);
+        sr.end();
+    }
+    private void drawSoftCard(Rectangle r,boolean active,Color accent,boolean selected){
+        sr.begin(ShapeRenderer.ShapeType.Filled);
+        if(selected)sr.setColor(uiShade(accent,.075f));
+        else if(active)sr.setColor(.012f,.031f,.044f,1f);
+        else sr.setColor(.010f,.018f,.025f,1f);
+        sr.rect(r.x,r.y,r.width,r.height);
+        sr.setColor(active?uiShade(accent,.62f):new Color(.055f,.075f,.085f,1f));sr.rect(r.x,r.y,3f,r.height);
+        sr.setColor(active?new Color(.055f,.125f,.155f,1f):new Color(.030f,.045f,.055f,1f));sr.rect(r.x+18f,r.y,r.width-18f,1.5f);
+        if(selected){
+            sr.setColor(uiShade(accent,.34f));
+            sr.rect(r.x+3f,r.y+r.height-2f,r.width-3f,2f);
+        }
+        sr.end();
+    }
+    private void drawSheetAction(Rectangle r,String text,Color accent,boolean enabled){
+        sr.begin(ShapeRenderer.ShapeType.Filled);
+        sr.setColor(enabled?new Color(.012f,.032f,.045f,1f):new Color(.018f,.020f,.024f,1f));sr.rect(r.x,r.y,r.width,r.height);
+        Color edge=enabled?uiShade(accent,.58f):new Color(.10f,.12f,.14f,1f);
+        // outline instead of a filled colour button
+        sr.setColor(edge);
+        sr.rect(r.x,r.y,r.width,2f);sr.rect(r.x,r.y+r.height-2f,r.width,2f);
+        sr.rect(r.x,r.y,2f,r.height);sr.rect(r.x+r.width-2f,r.y,2f,r.height);
+        sr.setColor(enabled?uiShade(accent,.16f):new Color(.025f,.030f,.035f,1f));
+        sr.rect(r.x+10f,r.y+8f,r.width-20f,2f);
+        sr.end();
+        batch.begin();Ui.centered(batch,game.assets.font,text,r,.72f,enabled?Color.WHITE:new Color(.45f,.48f,.52f,1));batch.end();
+    }
+
     private void drawShop(){
         drawOverlay();
-        Rectangle panel=new Rectangle(40,125,1000,1660);sr.begin(ShapeRenderer.ShapeType.Filled);Ui.panel(sr,panel,Ui.CYAN);sr.end();
-        batch.begin();Ui.text(batch,game.assets.font,game.assets.t("shop"),72,1720,1.12f,Color.WHITE);Ui.text(batch,game.assets.font,cheatsEnabled()?"C ∞":"C "+(long)save.credits,742,1718,.78f,Ui.GOLD);batch.end();
+        Rectangle panel=new Rectangle(40,125,1000,1660);drawShopSheet(panel,Ui.CYAN);
+        batch.begin();
+        Ui.text(batch,game.assets.font,game.assets.t("shop"),72,1720,1.12f,Color.WHITE);
+        Ui.text(batch,game.assets.font,cheatsEnabled()?"C ∞":"C "+(long)save.credits,742,1718,.78f,Ui.GOLD);
+        batch.end();
+
         String[] tabs={game.assets.t("finger"),game.assets.t("turrets"),game.assets.t("drones")};
         String[] tabIcons={"tab_finger","tab_turrets","tab_drones"};
+        sr.begin(ShapeRenderer.ShapeType.Filled);
+        sr.setColor(.010f,.026f,.038f,1f);sr.rect(70,1518,940,112);
+        sr.setColor(.028f,.060f,.078f,1f);sr.rect(84,1523,912,1.5f);
+        sr.end();
         for(int i=0;i<tabs.length;i++){
             Rectangle r=new Rectangle(90+i*300,1540,280,100);
-            sr.begin(ShapeRenderer.ShapeType.Filled);Ui.button(sr,r,true,i==shopTab);sr.end();
-            batch.begin();Texture ti=game.assets.icon(tabIcons[i]);if(ti!=null)batch.draw(ti,r.x+86,r.y+28,70,70);Ui.centered(batch,game.assets.font,tabs[i],new Rectangle(r.x,r.y-42,r.width,54),.49f,Color.WHITE);batch.end();
+            boolean active=i==shopTab;
+            sr.begin(ShapeRenderer.ShapeType.Filled);
+            if(active){sr.setColor(uiShade(Ui.CYAN,.065f));sr.rect(r.x-8,r.y-8,r.width+16,82);}
+            sr.setColor(active?uiShade(Ui.CYAN,.78f):new Color(.045f,.080f,.095f,1f));
+            sr.rect(r.x-8,r.y-8,r.width+16,active?3f:1.5f);
+            sr.end();
+            batch.begin();
+            Texture ti=game.assets.icon(tabIcons[i]);if(ti!=null){batch.setColor(1,1,1,active?1f:.58f);batch.draw(ti,r.x+18,r.y+17,56,56);batch.setColor(Color.WHITE);}
+            Ui.text(batch,game.assets.font,tabs[i],r.x+88,r.y+56,.50f,active?Color.WHITE:new Color(.58f,.70f,.78f,1));
+            batch.end();
         }
+
         Array<ShopEntry> list=shopEntries();int shown=Math.min(10,list.size);
+        float shift=shopPageShift;
         for(int i=0;i<shown;i++){
-            ShopEntry e=list.get(i);int col=i%2,row=i/2;Rectangle r=new Rectangle(70+col*478,1310-row*230,456,204);boolean active=shopSellMode?canSell(e):e.enabled;
-            sr.begin(ShapeRenderer.ShapeType.Filled);Ui.button(sr,r,active,false);sr.end();batch.begin();
-            Texture icon=game.assets.icon(game.assets.t("unknown_technology").equals(e.label)?"unknown":e.id);if(icon!=null){batch.setColor(1,1,1,active?1f:.36f);batch.draw(icon,r.x+16,r.y+39,122,122);batch.setColor(Color.WHITE);}
+            ShopEntry e=list.get(i);int col=i%2,row=i/2;
+            Rectangle r=new Rectangle(70+col*478+shift,1310-row*230,456,204);
+            boolean active=shopSellMode?canSell(e):e.enabled;
+            drawSoftCard(r,active,shopTab==0?Ui.CYAN:shopTab==1?Ui.GOLD:ELEC,false);
+            batch.begin();
+            Texture icon=game.assets.icon(game.assets.t("unknown_technology").equals(e.label)?"unknown":e.id);
+            if(icon!=null){batch.setColor(1,1,1,active?1f:.36f);batch.draw(icon,r.x+18,r.y+43,112,112);batch.setColor(Color.WHITE);}
             Color tc=active?Color.WHITE:new Color(.5f,.53f,.58f,1);
             Ui.text(batch,game.assets.font,shopShortLabel(e),r.x+148,r.y+166,.56f,tc);
             String levelText=shopLevelText(e);
-            // Long unlock requirements are deliberately stacked instead of escaping the card.
             Ui.text(batch,game.assets.font,levelText,r.x+148,r.y+112,.43f,new Color(.6f,.78f,.9f,active?1f:.65f));
             String price;
             if(shopSellMode){
                 long refund=refundFor(e);price=active?game.assets.t("sell_refund")+" C "+refund:game.assets.t("not_sellable");
             }else if(e.id.equals("repairSkill")){
-                price=save.repairSkillLevel>=20?game.assets.t("max"):game.assets.t("repair_by_use");
+                price=save.repairSkillLevel>=20?game.assets.t("max"):(cheatsEnabled()?"C 0":"C "+e.cost);
             }else{
                 price=cheatsEnabled()&&e.cost>0?"C 0":(e.cost<=0?game.assets.t("max"):(e.cost>=Long.MAX_VALUE/4?game.assets.t("locked"):"C "+e.cost));
             }
-            Ui.text(batch,game.assets.font,price,r.x+148,r.y+40,.47f,shopSellMode?Ui.GREEN:(active?Ui.GOLD:new Color(.45f,.35f,.2f,1)));batch.end();
+            Ui.text(batch,game.assets.font,price,r.x+148,r.y+40,.47f,shopSellMode?Ui.GREEN:(active?Ui.GOLD:new Color(.45f,.35f,.2f,1)));
+            batch.end();
         }
-        drawOverlayButton(new Rectangle(74,174,250,96),shopSellMode?game.assets.t("buy_mode"):game.assets.t("sell_mode"),true);drawOverlayButton(new Rectangle(350,174,380,96),game.assets.t("close"),true);
+
+        // One footer bar, not two floating buttons.
+        drawSheetAction(new Rectangle(74,174,250,96),shopSellMode?game.assets.t("buy_mode"):game.assets.t("sell_mode"),Ui.CYAN,true);
+        drawSheetAction(new Rectangle(350,174,380,96),game.assets.t("close"),Ui.CYAN,true);
     }
 
     private Array<ShopEntry> debuffEntries(){
@@ -1106,22 +1434,36 @@ public class GameScreen extends ScreenAdapter {
     }
 
     private void drawDebuffShop(){
-        drawOverlay();Rectangle panel=new Rectangle(70,250,940,1430);sr.begin(ShapeRenderer.ShapeType.Filled);Ui.panel(sr,panel,Ui.RED);sr.end();
+        drawOverlay();Rectangle panel=new Rectangle(70,250,940,1430);drawShopSheet(panel,Ui.RED);
         batch.begin();
         Ui.text(batch,game.assets.font,game.assets.t("debuffs"),110,1600,1.14f,Color.WHITE);
         Ui.text(batch,game.assets.font,cheatsEnabled()?"C ∞":"C "+(long)save.credits,745,1597,.78f,Ui.GOLD);
         Ui.text(batch,game.assets.font,game.assets.t("passive")+"  +"+String.format(java.util.Locale.US,"%.1f",save.passiveIncomePerSecond())+" C/s",110,1522,.58f,new Color(.70f,.86f,.94f,1));
-        Ui.text(batch,game.assets.font,game.assets.t("debuff_threat"),110,1435,.62f,Ui.RED);
-        Ui.text(batch,game.assets.font,game.assets.t("debuff_pressure"),110,1075,.62f,Ui.CYAN);
-        Ui.text(batch,game.assets.font,game.assets.t("debuff_profit"),110,715,.62f,Ui.GOLD);
+        batch.end();
+        // Three continuous bands instead of six framed buttons. Draw them BEFORE
+        // section captions so the panel cannot clip the lower part of the glyphs.
+        sr.begin(ShapeRenderer.ShapeType.Filled);
+        sr.setColor(.030f,.016f,.022f,1f);sr.rect(92,1174,876,238);
+        sr.setColor(.010f,.032f,.044f,1f);sr.rect(92,814,876,238);
+        sr.setColor(.030f,.027f,.012f,1f);sr.rect(92,454,876,238);
+        // group markers: enough colour to scan the screen, never a full coloured slab
+        sr.setColor(uiShade(Ui.RED,.54f));sr.rect(92,1174,3f,238);
+        sr.setColor(uiShade(Ui.CYAN,.54f));sr.rect(92,814,3f,238);
+        sr.setColor(uiShade(Ui.GOLD,.54f));sr.rect(92,454,3f,238);
+        sr.end();
+        batch.begin();
+        // Keep the group captions clearly above their bands.
+        Ui.text(batch,game.assets.font,game.assets.t("debuff_threat"),110,1450,.62f,Ui.RED);
+        Ui.text(batch,game.assets.font,game.assets.t("debuff_pressure"),110,1090,.62f,Ui.CYAN);
+        Ui.text(batch,game.assets.font,game.assets.t("debuff_profit"),110,730,.62f,Ui.GOLD);
         batch.end();
         Array<ShopEntry> list=debuffEntries();
         float[] ys={1200,1200,840,840,480,480};
         for(int i=0;i<list.size;i++){
             ShopEntry e=list.get(i);int col=i%2;Rectangle r=new Rectangle(105+col*445,ys[i],420,200);drawDebuffCard(r,e);
         }
-        drawOverlayButton(new Rectangle(130,300,310,105),shopSellMode?game.assets.t("buy_mode"):game.assets.t("sell_mode"),true);
-        drawOverlayButton(new Rectangle(530,300,420,105),game.assets.t("close"),true);
+        drawSheetAction(new Rectangle(130,300,310,105),shopSellMode?game.assets.t("buy_mode"):game.assets.t("sell_mode"),Ui.RED,true);
+        drawSheetAction(new Rectangle(530,300,420,105),game.assets.t("close"),Ui.RED,true);
     }
 
     private void debuffShopClick(float x,float y){
@@ -1133,13 +1475,16 @@ public class GameScreen extends ScreenAdapter {
 
     private void drawDebuffCard(Rectangle r,ShopEntry e){
         boolean active=shopSellMode?canSell(e):e.enabled;
-        sr.begin(ShapeRenderer.ShapeType.Filled);Ui.button(sr,r,active,false);sr.end();batch.begin();
-        Texture icon=game.assets.icon(game.assets.t("unknown_technology").equals(e.label)?"unknown":e.id);if(icon!=null){batch.setColor(1,1,1,active?1f:.38f);batch.draw(icon,r.x+18,r.y+45,104,104);batch.setColor(Color.WHITE);}
-        Ui.text(batch,game.assets.font,shopShortLabel(e),r.x+136,r.y+155,.58f,active?Color.WHITE:new Color(.5f,.53f,.58f,1));
-        Ui.text(batch,game.assets.font,shopLevelText(e),r.x+136,r.y+105,.49f,new Color(.65f,.80f,.92f,active?1f:.65f));
+        Color accent=e.id.equals("enemyHealth")||e.id.equals("enemyDamage")?Ui.RED:(e.id.equals("enemySpeed")||e.id.equals("density")?Ui.CYAN:Ui.GOLD);
+        drawSoftCard(r,active,accent,false);
+        batch.begin();
+        Texture icon=game.assets.icon(game.assets.t("unknown_technology").equals(e.label)?"unknown":e.id);
+        if(icon!=null){batch.setColor(1,1,1,active?1f:.38f);batch.draw(icon,r.x+18,r.y+49,96,96);batch.setColor(Color.WHITE);}
+        Ui.text(batch,game.assets.font,shopShortLabel(e),r.x+128,r.y+155,.58f,active?Color.WHITE:new Color(.5f,.53f,.58f,1));
+        Ui.text(batch,game.assets.font,shopLevelText(e),r.x+128,r.y+105,.49f,new Color(.65f,.80f,.92f,active?1f:.65f));
         String price;if(shopSellMode){long refund=refundFor(e);price=active?game.assets.t("sell_refund")+" C "+refund:game.assets.t("not_sellable");}else price=cheatsEnabled()?"C 0":"C "+e.cost;
-        Ui.text(batch,game.assets.font,price,r.x+136,r.y+55,.50f,shopSellMode?Ui.GREEN:Ui.GOLD);
-        if(!shopSellMode)Ui.text(batch,game.assets.font,"+"+String.format(java.util.Locale.US,"%.1f",passiveGainFor(e.id))+" C/s",r.x+270,r.y+55,.42f,Ui.GREEN);
+        Ui.text(batch,game.assets.font,price,r.x+128,r.y+55,.50f,shopSellMode?Ui.GREEN:Ui.GOLD);
+        if(!shopSellMode)Ui.text(batch,game.assets.font,"+"+String.format(java.util.Locale.US,"%.1f",passiveGainFor(e.id))+" C/s",r.x+265,r.y+55,.42f,Ui.GREEN);
         batch.end();
     }
 
@@ -1148,9 +1493,12 @@ public class GameScreen extends ScreenAdapter {
     }
 
     private void drawEffectShop(){
-        drawOverlay();Rectangle p=new Rectangle(115,420,850,1010);sr.begin(ShapeRenderer.ShapeType.Filled);Ui.panel(sr,p,ELEC);sr.end();
-        batch.begin();Ui.text(batch,game.assets.font,game.assets.t("effect_shop"),270,1340,1.04f,Color.WHITE);Ui.text(batch,game.assets.font,cheatsEnabled()?"C ∞":"C "+(long)save.credits,710,1340,.68f,Ui.GOLD);batch.end();
-        Rectangle r1=new Rectangle(180,1030,720,190),r2=new Rectangle(180,800,720,190),r3=new Rectangle(180,570,720,190);
+        drawOverlay();Rectangle p=new Rectangle(115,420,850,1010);drawShopSheet(p,ELEC);
+        batch.begin();
+        Ui.text(batch,game.assets.font,game.assets.t("effect_shop"),160,1340,1.04f,Color.WHITE);
+        Ui.text(batch,game.assets.font,cheatsEnabled()?"C ∞":"C "+(long)save.credits,715,1340,.68f,Ui.GOLD);
+        batch.end();
+        Rectangle r1=new Rectangle(165,1030,750,190),r2=new Rectangle(165,800,750,190),r3=new Rectangle(165,570,750,190);
         if(cheatsEnabled()){
             drawEffectCard(r1,"fire",game.assets.t("fire"),true,0,true);
             drawEffectCard(r2,"ice",game.assets.t("ice"),true,0,true);
@@ -1160,24 +1508,32 @@ public class GameScreen extends ScreenAdapter {
             if(save.fireUnlocked){drawEffectCard(row++==0?r1:r2,"fire",game.assets.t("fire"),true,0,true);}
             if(save.iceUnlocked){Rectangle r=row++==0?r1:row==2?r2:r3;drawEffectCard(r,"ice",game.assets.t("ice"),true,0,true);}
             if(save.lightningUnlocked){Rectangle r=row++==0?r1:row==2?r2:r3;drawEffectCard(r,"lightning",game.assets.t("lightning"),true,0,true);}
-            if(!save.fireUnlocked)drawEffectCard(r1,"unknown",game.assets.t("unknown_technology"),false,1200,save.totalBossKills>=5);
-            else if(!save.iceUnlocked){Rectangle r=save.fireUnlocked?r2:r1;drawEffectCard(r,"unknown",game.assets.t("unknown_technology"),false,2400,save.totalBossKills>=7);}
-            else if(!save.lightningUnlocked){Rectangle r=r3;drawEffectCard(r,"unknown",game.assets.t("unknown_technology"),false,4800,save.totalBossKills>=9);}
+            if(!save.fireUnlocked)drawEffectCard(r1,"unknown",game.assets.t("unknown_technology"),false,FIRE_UNLOCK_COST,save.totalBossKills>=5);
+            else if(!save.iceUnlocked){Rectangle r=save.fireUnlocked?r2:r1;drawEffectCard(r,"unknown",game.assets.t("unknown_technology"),false,ICE_UNLOCK_COST,save.totalBossKills>=7);}
+            else if(!save.lightningUnlocked){Rectangle r=r3;drawEffectCard(r,"unknown",game.assets.t("unknown_technology"),false,LIGHTNING_UNLOCK_COST,save.totalBossKills>=9);}
         }
-        drawOverlayButton(new Rectangle(310,455,460,96),game.assets.t("back"),true);
+        drawSheetAction(new Rectangle(310,455,460,96),game.assets.t("back"),ELEC,true);
     }
 
     private void drawEffectCard(Rectangle r,String iconName,String title,boolean unlocked,long cost,boolean ready){
-        boolean active=!unlocked&&ready;
-        sr.begin(ShapeRenderer.ShapeType.Filled);Ui.button(sr,r,active,false);sr.end();batch.begin();Texture ic=game.assets.icon(iconName);if(ic!=null){batch.setColor(1,1,1,ready||unlocked?1f:.35f);batch.draw(ic,r.x+30,r.y+35,120,120);batch.setColor(Color.WHITE);}Ui.text(batch,game.assets.font,title,r.x+180,r.y+135,.76f,unlocked?Ui.GREEN:(ready?Color.WHITE:new Color(.52f,.56f,.62f,1)));String price=unlocked?game.assets.t("max"):(ready?"C "+cost:game.assets.t("locked"));Ui.text(batch,game.assets.font,price,r.x+180,r.y+66,.58f,unlocked?Ui.GREEN:(ready?Ui.GOLD:new Color(.50f,.40f,.25f,1)));batch.end();
+        boolean active=unlocked||ready;
+        Color accent=iconName.equals("fire")?FIRE:iconName.equals("ice")?ICE:iconName.equals("lightning")?ELEC:new Color(.45f,.55f,.65f,1);
+        drawSoftCard(r,active,accent,unlocked);
+        batch.begin();
+        Texture ic=game.assets.icon(iconName);
+        if(ic!=null){batch.setColor(1,1,1,ready||unlocked?1f:.35f);batch.draw(ic,r.x+32,r.y+37,116,116);batch.setColor(Color.WHITE);}
+        Ui.text(batch,game.assets.font,title,r.x+180,r.y+135,.76f,unlocked?accent:(ready?Color.WHITE:new Color(.52f,.56f,.62f,1)));
+        String price=unlocked?game.assets.t("max"):(ready?"C "+cost:game.assets.t("locked"));
+        Ui.text(batch,game.assets.font,price,r.x+180,r.y+66,.58f,unlocked?Ui.GREEN:(ready?Ui.GOLD:new Color(.50f,.40f,.25f,1)));
+        batch.end();
     }
 
     private void effectShopClick(float x,float y){
         if(new Rectangle(310,455,460,96).contains(x,y)){effectShopOpen=false;elementConfigOpen=true;return;}
         if(cheatsEnabled())return; // cheat mode already exposes every element in Effect Setup.
-        if(!save.fireUnlocked && save.totalBossKills>=5 && new Rectangle(180,1030,720,190).contains(x,y)){buyEffect("fire",1200);return;}
-        if(save.fireUnlocked&&!save.iceUnlocked && save.totalBossKills>=7 && new Rectangle(180,800,720,190).contains(x,y)){buyEffect("ice",2400);return;}
-        if(save.fireUnlocked&&save.iceUnlocked&&!save.lightningUnlocked && save.totalBossKills>=9 && new Rectangle(180,570,720,190).contains(x,y)){buyEffect("lightning",4800);}
+        if(!save.fireUnlocked && save.totalBossKills>=5 && new Rectangle(165,1030,750,190).contains(x,y)){buyEffect("fire",FIRE_UNLOCK_COST);return;}
+        if(save.fireUnlocked&&!save.iceUnlocked && save.totalBossKills>=7 && new Rectangle(165,800,750,190).contains(x,y)){buyEffect("ice",ICE_UNLOCK_COST);return;}
+        if(save.fireUnlocked&&save.iceUnlocked&&!save.lightningUnlocked && save.totalBossKills>=9 && new Rectangle(165,570,750,190).contains(x,y)){buyEffect("lightning",LIGHTNING_UNLOCK_COST);}
     }
 
     private void buyEffect(String id,long cost){
@@ -1187,35 +1543,44 @@ public class GameScreen extends ScreenAdapter {
 
     private void drawElementConfig(){
         drawOverlay();
-        Rectangle panel=new Rectangle(85,220,910,1360);sr.begin(ShapeRenderer.ShapeType.Filled);Ui.panel(sr,panel,Ui.CYAN);sr.end();
-        batch.begin();Ui.text(batch,game.assets.font,game.assets.t("effect_setup"),190,1500,1.10f,Color.WHITE);batch.end();
+        Rectangle panel=new Rectangle(85,220,910,1360);drawShopSheet(panel,Ui.CYAN);
+        batch.begin();Ui.text(batch,game.assets.font,game.assets.t("effect_setup"),130,1500,1.10f,Color.WHITE);batch.end();
 
-        drawConfigGroup(new Rectangle(135,1130,810,250),"tab_finger",game.assets.t("finger"),Ui.CYAN);
-        drawConfigChoice(new Rectangle(175,1165,730,120),game.assets.t("attack_element"),elementName(save.fingerElement),elementIconName(save.fingerElement),elementColor(save.fingerElement));
+        drawConfigGroup(new Rectangle(125,1120,830,260),"tab_finger",game.assets.t("finger"),Ui.CYAN);
+        drawConfigChoice(new Rectangle(160,1160,760,125),game.assets.t("attack_element"),elementName(save.fingerElement),elementIconName(save.fingerElement),elementColor(save.fingerElement));
 
-        drawConfigGroup(new Rectangle(135,785,810,285),"tab_turrets",game.assets.t("turrets"),Ui.GOLD);
-        drawConfigChoice(new Rectangle(175,820,345,125),game.assets.t("attack_element"),elementName(save.turretElement),elementIconName(save.turretElement),elementColor(save.turretElement));
+        drawConfigGroup(new Rectangle(125,775,830,300),"tab_turrets",game.assets.t("turrets"),Ui.GOLD);
+        drawConfigChoice(new Rectangle(160,815,365,130),game.assets.t("attack_element"),elementName(save.turretElement),elementIconName(save.turretElement),elementColor(save.turretElement));
         String wIcon=save.turretWeapon==1?"laser":save.turretWeapon==2?"rockets":"buyTurret";
-        drawConfigChoice(new Rectangle(550,820,355,125),game.assets.t("weapon"),turretWeaponName(),wIcon,Ui.GOLD);
+        drawConfigChoice(new Rectangle(555,815,365,130),game.assets.t("weapon"),turretWeaponName(),wIcon,Ui.GOLD);
 
-        drawConfigGroup(new Rectangle(135,440,810,285),"tab_drones",game.assets.t("drones"),ELEC);
-        drawConfigChoice(new Rectangle(175,475,345,125),game.assets.t("attack_element"),elementName(save.droneElement),elementIconName(save.droneElement),elementColor(save.droneElement));
-        drawConfigChoice(new Rectangle(550,475,355,125),game.assets.t("aura_element"),elementName(save.droneAuraElement),elementIconName(save.droneAuraElement),elementColor(save.droneAuraElement));
+        drawConfigGroup(new Rectangle(125,430,830,300),"tab_drones",game.assets.t("drones"),ELEC);
+        drawConfigChoice(new Rectangle(160,470,365,130),game.assets.t("attack_element"),elementName(save.droneElement),elementIconName(save.droneElement),elementColor(save.droneElement));
+        drawConfigChoice(new Rectangle(555,470,365,130),game.assets.t("aura_element"),elementName(save.droneAuraElement),elementIconName(save.droneAuraElement),elementColor(save.droneAuraElement));
 
-        drawOverlayButton(new Rectangle(150,285,360,96),game.assets.t("effect_shop"),true);
-        drawOverlayButton(new Rectangle(570,285,360,96),game.assets.t("close"),true);
+        drawSheetAction(new Rectangle(150,285,360,96),game.assets.t("effect_shop"),Ui.CYAN,true);
+        drawSheetAction(new Rectangle(570,285,360,96),game.assets.t("close"),Ui.CYAN,true);
     }
 
     private void drawConfigGroup(Rectangle r,String iconName,String title,Color edge){
-        sr.begin(ShapeRenderer.ShapeType.Filled);sr.setColor(.018f,.045f,.075f,.94f);sr.rect(r.x,r.y,r.width,r.height);sr.setColor(edge.r,edge.g,edge.b,.45f);sr.rect(r.x,r.y+r.height-3,r.width,3);sr.end();
-        batch.begin();Texture ic=game.assets.icon(iconName);if(ic!=null)batch.draw(ic,r.x+24,r.y+r.height-86,62,62);Ui.text(batch,game.assets.font,title,r.x+105,r.y+r.height-38,.68f,Color.WHITE);batch.end();
+        sr.begin(ShapeRenderer.ShapeType.Filled);
+        sr.setColor(.010f,.029f,.041f,1f);sr.rect(r.x,r.y,r.width,r.height);
+        sr.setColor(uiShade(edge,.56f));sr.rect(r.x,r.y+r.height-2f,r.width,2f);
+        sr.setColor(uiShade(edge,.23f));sr.rect(r.x,r.y,3f,r.height);
+        sr.end();
+        batch.begin();
+        Texture ic=game.assets.icon(iconName);if(ic!=null){batch.setColor(1,1,1,.82f);batch.draw(ic,r.x+20,r.y+r.height-72,48,48);batch.setColor(Color.WHITE);}
+        Ui.text(batch,game.assets.font,title,r.x+84,r.y+r.height-32,.64f,Color.WHITE);
+        batch.end();
     }
 
     private void drawConfigChoice(Rectangle r,String title,String value,String iconName,Color accent){
-        sr.begin(ShapeRenderer.ShapeType.Filled);Ui.button(sr,r,true,false);sr.end();batch.begin();
-        Texture ic=game.assets.icon(iconName);if(ic!=null)batch.draw(ic,r.x+18,r.y+26,72,72);
-        Ui.text(batch,game.assets.font,title,r.x+104,r.y+89,.43f,new Color(.66f,.78f,.88f,1));
-        Ui.text(batch,game.assets.font,value,r.x+104,r.y+43,.53f,accent);batch.end();
+        drawSoftCard(r,true,accent,false);
+        batch.begin();
+        Texture ic=game.assets.icon(iconName);if(ic!=null)batch.draw(ic,r.x+16,r.y+27,70,70);
+        Ui.text(batch,game.assets.font,title,r.x+100,r.y+91,.43f,new Color(.66f,.78f,.88f,1));
+        Ui.text(batch,game.assets.font,value,r.x+100,r.y+43,.53f,accent);
+        batch.end();
     }
 
     private void drawElementRow(Rectangle r,String sourceIcon,String title,Element element,boolean gravityAllowed){
@@ -1241,11 +1606,11 @@ public class GameScreen extends ScreenAdapter {
     private void elementConfigClick(float x,float y){
         if(new Rectangle(570,285,360,96).contains(x,y)){elementConfigOpen=false;game.saves.save(save);return;}
         if(new Rectangle(150,285,360,96).contains(x,y)){triggerUiPulse(330,333,ELEC);elementConfigOpen=false;effectShopOpen=true;return;}
-        if(new Rectangle(175,1165,730,120).contains(x,y)){save.fingerElement=save.fingerElement.nextCombat(true,save,cheatsEnabled());game.saves.save(save);return;}
-        if(new Rectangle(175,820,345,125).contains(x,y)){save.turretElement=save.turretElement.nextCombat(false,save,cheatsEnabled());game.saves.save(save);return;}
-        if(new Rectangle(550,820,355,125).contains(x,y)){cycleTurretWeapon();game.saves.save(save);return;}
-        if(new Rectangle(175,475,345,125).contains(x,y)){save.droneElement=save.droneElement.nextCombat(false,save,cheatsEnabled());game.saves.save(save);return;}
-        if(new Rectangle(550,475,355,125).contains(x,y)){save.droneAuraElement=save.droneAuraElement.nextCombat(false,save,cheatsEnabled());game.saves.save(save);}
+        if(new Rectangle(160,1160,760,125).contains(x,y)){save.fingerElement=save.fingerElement.nextCombat(true,save,cheatsEnabled());game.saves.save(save);return;}
+        if(new Rectangle(160,815,365,130).contains(x,y)){save.turretElement=save.turretElement.nextCombat(false,save,cheatsEnabled());game.saves.save(save);return;}
+        if(new Rectangle(555,815,365,130).contains(x,y)){cycleTurretWeapon();game.saves.save(save);return;}
+        if(new Rectangle(160,470,365,130).contains(x,y)){save.droneElement=save.droneElement.nextCombat(false,save,cheatsEnabled());game.saves.save(save);return;}
+        if(new Rectangle(555,470,365,130).contains(x,y)){save.droneAuraElement=save.droneAuraElement.nextCombat(false,save,cheatsEnabled());game.saves.save(save);}
     }
 
     private String elementIconName(Element e){return switch(e){case FIRE->"fire";case ICE->"ice";case LIGHTNING->"lightning";case GRAVITY->"gravity";default->"neutral";};}
@@ -1316,7 +1681,7 @@ public class GameScreen extends ScreenAdapter {
         if(e.id.equals("gunDrone")||e.id.equals("missileDrone")||e.id.equals("kamikaze")||e.id.equals("support"))return save.droneCount()+" / "+save.droneCap();
         if(e.id.equals("repairSkill")){
             if(save.repairSkillLevel>=20)return "Lv.20/20";
-            return "Lv."+save.repairSkillLevel+"/20\nXP "+(int)save.repairXp+"/"+(int)Math.ceil(repairXpNeed(save.repairSkillLevel));
+            return "Lv."+save.repairSkillLevel+"/20\nXP "+(int)save.repairXp+"/"+(int)Math.ceil(repairXpNeed(save.repairSkillLevel))+"  •  "+game.assets.t("repair_xp_short");
         }
         String l=e.label;int ix=l.indexOf("Lv.");if(ix>=0)return l.substring(ix);return e.cost==0?game.assets.t("max"):"";
     }
@@ -1343,7 +1708,7 @@ public class GameScreen extends ScreenAdapter {
             a.add(entry("turretDmg",game.assets.t("damage")+"  Lv."+save.turretDamageLevel,cost(180,1.52,save.turretDamageLevel),true));
             a.add(entry("turretRate",game.assets.t("rate")+"  Lv."+save.turretRateLevel,cost(220,1.55,save.turretRateLevel),true));
             a.add(entry("turretShield",game.assets.t("shield")+"  Lv."+save.turretShieldLevel,cost(180,1.50,save.turretShieldLevel),true));
-            a.add(entry("repairSkill",game.assets.t("repair_skill")+"  Lv."+save.repairSkillLevel,0,false));
+            a.add(entry("repairSkill",game.assets.t("repair_skill")+"  Lv."+save.repairSkillLevel,save.repairSkillLevel>=20?0:cost(320,1.42,Math.max(0,save.repairSkillLevel-1)),save.repairSkillLevel<20));
             if(cheatsEnabled()){
                 a.add(entry("laser",game.assets.t("pulse_laser"),3000,!save.turretLaserUnlocked));a.add(entry("rockets",game.assets.t("rockets"),5200,!save.turretRocketsUnlocked));a.add(entry("autoRepair",game.assets.t("auto_repair"),9500,!save.autoRepairUnlocked));a.add(entry("turretPlusTwo","+2 "+game.assets.t("turrets"),45000,!save.turretPlusTwo));
             }else if(!save.turretLaserUnlocked)a.add(mystery("laser",3000,save.turretDamageLevel>=8&&save.turretRateLevel>=6));
@@ -1375,7 +1740,7 @@ public class GameScreen extends ScreenAdapter {
     private void shopClick(float x,float y){
         if(new Rectangle(350,174,380,96).contains(x,y)){shopOpen=false;shopSellMode=false;game.saves.save(save);return;}
         if(new Rectangle(74,174,250,96).contains(x,y)){shopSellMode=!shopSellMode;return;}
-        for(int i=0;i<3;i++)if(new Rectangle(90+i*300,1540,280,100).contains(x,y)){shopTab=i;return;}
+        for(int i=0;i<3;i++)if(new Rectangle(90+i*300,1540,280,100).contains(x,y)){changeShopTab(i);return;}
         Array<ShopEntry> list=shopEntries();
         for(int i=0;i<Math.min(10,list.size);i++){int col=i%2,row=i/2;Rectangle r=new Rectangle(70+col*478,1310-row*230,456,204);if(r.contains(x,y)){if(shopSellMode)sell(list.get(i));else buy(list.get(i));return;}}
     }
@@ -1396,7 +1761,7 @@ public class GameScreen extends ScreenAdapter {
             case "gDamage"->cost(120,1.58,Math.max(0,save.generalDamageLevel-1));case "gRate"->cost(150,1.62,Math.max(0,save.generalRateLevel-1));case "yield"->cost(180,1.60,Math.max(0,save.creditYieldLevel-1));case "density"->cost(55,1.48,Math.max(0,save.densityLevel-1));case "spawn"->cost(60,1.50,Math.max(0,save.spawnRateLevel-1));case "value"->cost(75,1.52,Math.max(0,save.enemyValueLevel-1));case "enemySpeed"->cost(65,1.50,Math.max(0,save.enemySpeedLevel-1));case "enemyDamage"->cost(70,1.52,Math.max(0,save.enemyDamageLevel-1));case "enemyHealth"->cost(70,1.52,Math.max(0,save.enemyHealthLevel-1));
             case "tapDmg"->cost(70,1.18,Math.max(0,save.tapDamageLevel-1));case "tapRate"->cost(90,1.55,Math.max(0,save.tapSpeedLevel-1));case "plasma"->550;case "trail"->850;case "ultimate"->3800;case "gravity"->15000;
             case "buyTurret"->cost(300,1.90,Math.max(0,save.turretCount-1));case "turretDmg"->cost(180,1.56,Math.max(0,save.turretDamageLevel-1));case "turretRate"->cost(220,1.60,Math.max(0,save.turretRateLevel-1));case "turretShield"->cost(180,1.55,Math.max(0,save.turretShieldLevel-1));case "autoRepair"->5200;case "laser"->1800;case "rockets"->3200;case "turretPlusTwo"->30000;
-            case "gunDrone"->cost(700,1.48,Math.max(0,save.droneCount()-1));case "missileDrone"->Math.max(1350,cost(700,1.48,Math.max(0,save.droneCount()-1))+500);case "kamikaze"->Math.max(1800,cost(700,1.48,Math.max(0,save.droneCount()-1))+850);case "support"->Math.max(2400,cost(700,1.48,Math.max(0,save.droneCount()-1))+1400);case "droneDmg"->cost(220,1.56,Math.max(0,save.droneDamageLevel-1));case "droneRate"->cost(260,1.60,Math.max(0,save.droneRateLevel-1));case "droneAura"->cost(300,1.62,Math.max(0,save.droneAuraLevel-1));case "droneShield"->cost(240,1.56,Math.max(0,save.droneShieldLevel-1));case "dronePlusTwo"->32000;case "fire"->600;case "ice"->900;case "lightning"->1500;default->0;
+            case "gunDrone"->cost(700,1.48,Math.max(0,save.droneCount()-1));case "missileDrone"->Math.max(1350,cost(700,1.48,Math.max(0,save.droneCount()-1))+500);case "kamikaze"->Math.max(1800,cost(700,1.48,Math.max(0,save.droneCount()-1))+850);case "support"->Math.max(2400,cost(700,1.48,Math.max(0,save.droneCount()-1))+1400);case "droneDmg"->cost(220,1.56,Math.max(0,save.droneDamageLevel-1));case "droneRate"->cost(260,1.60,Math.max(0,save.droneRateLevel-1));case "droneAura"->cost(300,1.62,Math.max(0,save.droneAuraLevel-1));case "droneShield"->cost(240,1.56,Math.max(0,save.droneShieldLevel-1));case "dronePlusTwo"->32000;case "fire"->FIRE_UNLOCK_COST;case "ice"->ICE_UNLOCK_COST;case "lightning"->LIGHTNING_UNLOCK_COST;default->0;
         };return (long)(value*.60);
     }
 
@@ -1425,6 +1790,7 @@ public class GameScreen extends ScreenAdapter {
             case "gravity"->{if(!save.gravityUnlocked)unlockedName=game.assets.t("gravity");save.gravityUnlocked=true;}
             case "buyTurret"->{save.turretCount++;rebuildDefenses();}
             case "turretDmg"->save.turretDamageLevel++;case "turretRate"->save.turretRateLevel++;case "turretShield"->{save.turretShieldLevel++;rebuildDefenses();}
+            case "repairSkill"->{if(save.repairSkillLevel<20){save.repairSkillLevel++;if(save.repairSkillLevel>=20)save.repairXp=0f;else gainRepairXp(0f);}}
             case "autoRepair"->{if(!save.autoRepairUnlocked)unlockedName=game.assets.t("auto_repair");save.autoRepairUnlocked=true;}
             case "laser"->{if(!save.turretLaserUnlocked)unlockedName=game.assets.t("pulse_laser");save.turretLaserUnlocked=true;}
             case "rockets"->{if(!save.turretRocketsUnlocked)unlockedName=game.assets.t("rockets");save.turretRocketsUnlocked=true;}
@@ -1471,7 +1837,13 @@ public class GameScreen extends ScreenAdapter {
     }
     private float skillNeed(int level){return 40f+(float)Math.pow(level,1.32)*18f;}
 
-    private Color colorFor(Enemy e){return switch(e.kind){case FAST->new Color(.18f,.95f,1f,1);case TANK->new Color(1f,.33f,.22f,1);case ELITE->new Color(.82f,.25f,1f,1);case BOSS->new Color(1f,.1f,.3f,1);default->new Color(.25f,.75f,1f,1);};}
+    private Color colorFor(Enemy e){
+        if(e.archetype==EnemyArchetype.GUARDIAN)return new Color(.20f,1f,.72f,1);
+        if(e.archetype==EnemyArchetype.ELEMENT_WARD)return new Color(.58f,.28f,1f,1);
+        if(e.archetype==EnemyArchetype.INFECTOR)return new Color(.92f,.16f,1f,1);
+        if(e.archetype==EnemyArchetype.STAR)return new Color(1f,.66f,.12f,1);
+        return switch(e.kind){case FAST->new Color(.18f,.95f,1f,1);case TANK->new Color(1f,.33f,.22f,1);case ELITE->new Color(.82f,.25f,1f,1);case BOSS->new Color(1f,.1f,.3f,1);default->new Color(.25f,.75f,1f,1);};
+    }
     private Color elementColor(Element e){return switch(e){case FIRE->FIRE;case ICE->ICE;case LIGHTNING->ELEC;case GRAVITY->GRAV;default->Ui.CYAN;};}
     private Color alienAttackColor(EnemyAttackKind k){return switch(k){case CORROSION->new Color(.42f,1f,.10f,1);case PARASITE->new Color(.88f,.16f,1f,1);case DISRUPTION->new Color(1f,.58f,.08f,1);default->new Color(1f,.28f,.06f,1);};}
     private String elementName(Element e){return switch(e){case FIRE->game.assets.t("fire");case ICE->game.assets.t("ice");case LIGHTNING->game.assets.t("lightning");case GRAVITY->game.assets.t("gravity");default->game.assets.t("neutral");};}

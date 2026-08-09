@@ -16,6 +16,7 @@ public class SaveRepository {
         try {
             SaveData s = json.fromJson(SaveData.class, prefs.getString("slot." + slot));
             s.slot = slot;
+            s.difficulty = Math.max(0, Math.min(2, s.difficulty));
             if (s.kamikazeDrones > 0) s.kamikazeUnlocked = true;
             if (s.missileDrones > 0) s.missileDroneUnlocked = true;
             if (s.supportDrones > 0) s.supportDroneUnlocked = true;

@@ -35,6 +35,7 @@ public class DotCoreGame extends Game {
 
     public void openMenu() { changeScreen(new MenuScreen(this)); }
     public void playSlot(int slot) { changeScreen(new GameScreen(this, saves.load(slot))); }
+    public void playNewSlot(int slot, int difficulty) { SaveData s=saves.fresh(slot); s.difficulty=difficulty; saves.save(s); changeScreen(new GameScreen(this,s)); }
     public void showIntroAgain() { changeScreen(new IntroScreen(this, true)); }
 
     @Override public void dispose() {

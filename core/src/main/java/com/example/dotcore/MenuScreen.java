@@ -18,7 +18,7 @@ import com.badlogic.gdx.utils.viewport.FitViewport;
 import com.badlogic.gdx.utils.viewport.Viewport;
 
 public class MenuScreen extends ScreenAdapter {
-    private enum Mode { MAIN, SLOTS, SETTINGS, ABOUT, DELETE_CONFIRM }
+    private enum Mode { MAIN, SLOTS, DIFFICULTY, BESTIARY, SETTINGS, ABOUT, DELETE_CONFIRM }
     private final DotCoreGame game;
     private final OrthographicCamera camera = new OrthographicCamera();
     private final Viewport viewport = new FitViewport(1080,1920,camera);
@@ -29,6 +29,7 @@ public class MenuScreen extends ScreenAdapter {
     private final Vector3 pointer = new Vector3();
     private Mode mode = Mode.MAIN;
     private int pendingDeleteSlot = -1;
+    private int pendingNewSlot = -1;
     private int dotTapCount = 0;
     private float dotTapWindow = 0f;
     private float cheatMessageTime = 0f;
@@ -55,9 +56,18 @@ public class MenuScreen extends ScreenAdapter {
             }
             @Override public boolean touchUp(int screenX,int screenY,int pointerId,int button){ draggingSlider=0; return false; }
             @Override public boolean keyDown(int keycode){
-                if(keycode== Input.Keys.ESCAPE){ if(mode!=Mode.MAIN) mode=Mode.MAIN; else Gdx.app.exit(); return true;} return false;
+                if(keycode==Input.Keys.ESCAPE || keycode==Input.Keys.BACK){
+                    if(mode==Mode.DELETE_CONFIRM){pendingDeleteSlot=-1;mode=Mode.SLOTS;return true;}
+                    if(mode==Mode.DIFFICULTY){pendingNewSlot=-1;mode=Mode.SLOTS;return true;}
+                    if(mode==Mode.BESTIARY){mode=Mode.MAIN;return true;}
+                    if(mode==Mode.SLOTS||mode==Mode.SETTINGS||mode==Mode.ABOUT){mode=Mode.MAIN;return true;}
+                    // Main menu has an explicit Exit button; Android Back should not accidentally close the game.
+                    return true;
+                }
+                return false;
             }
         });
+        Gdx.input.setCatchKey(Input.Keys.BACK,true);
     }
 
     private Rectangle btn(float centerY){ return new Rectangle(250,centerY-55,580,110); }
@@ -80,19 +90,27 @@ public class MenuScreen extends ScreenAdapter {
                 }
                 return;
             }
-            if(btn(1120).contains(x,y)){ mode=Mode.SLOTS; return; }
-            if(btn(960).contains(x,y) && anySave()){ game.playSlot(game.saves.lastSlot()); return; }
-            if(btn(800).contains(x,y)){ mode=Mode.SETTINGS; return; }
-            if(btn(640).contains(x,y)){ mode=Mode.ABOUT; return; }
-            if(btn(480).contains(x,y)){ Gdx.app.exit(); }
+            if(btn(1180).contains(x,y)){ mode=Mode.SLOTS; return; }
+            if(btn(1035).contains(x,y) && anySave()){ game.playSlot(game.saves.lastSlot()); return; }
+            if(btn(890).contains(x,y)){ mode=Mode.BESTIARY; return; }
+            if(btn(745).contains(x,y)){ mode=Mode.SETTINGS; return; }
+            if(btn(600).contains(x,y)){ mode=Mode.ABOUT; return; }
+            if(btn(455).contains(x,y)){ Gdx.app.exit(); }
         } else if(mode==Mode.SLOTS){
             for(int i=1;i<=SaveRepository.SLOT_COUNT;i++){
                 Rectangle r=new Rectangle(150,1330-(i-1)*190,780,140);
                 Rectangle del=new Rectangle(835,r.y+22,82,96);
                 if(game.saves.exists(i)&&del.contains(x,y)){pendingDeleteSlot=i;mode=Mode.DELETE_CONFIRM;return;}
-                if(r.contains(x,y)){ game.playSlot(i); return; }
+                if(r.contains(x,y)){ if(game.saves.exists(i))game.playSlot(i); else {pendingNewSlot=i;mode=Mode.DIFFICULTY;} return; }
             }
             if(btn(260).contains(x,y)) mode=Mode.MAIN;
+        } else if(mode==Mode.DIFFICULTY){
+            if(new Rectangle(170,1120,740,150).contains(x,y)){game.playNewSlot(pendingNewSlot,0);return;}
+            if(new Rectangle(170,885,740,150).contains(x,y)){game.playNewSlot(pendingNewSlot,1);return;}
+            if(new Rectangle(170,650,740,150).contains(x,y)){game.playNewSlot(pendingNewSlot,2);return;}
+            if(btn(340).contains(x,y)){pendingNewSlot=-1;mode=Mode.SLOTS;return;}
+        } else if(mode==Mode.BESTIARY){
+            if(btn(210).contains(x,y)){mode=Mode.MAIN;return;}
         } else if(mode==Mode.SETTINGS){
             if(new Rectangle(270,1280,540,110).contains(x,y)){
                 game.applyLanguage("ru".equals(game.settings.language)?"en":"ru"); return;
@@ -132,13 +150,13 @@ public class MenuScreen extends ScreenAdapter {
         sr.setColor(0.05f,0.65f,1f,0.08f); sr.circle(540,1550,215*pulse,64);
         sr.setColor(0.05f,0.8f,1f,0.15f); sr.circle(540,1550,145*pulse,64);
         sr.setColor(0.75f,0.98f,1f,0.8f); sr.circle(540,1550,28,32);
-        drawMenuEnemies();
+        if(mode==Mode.MAIN) drawMenuEnemies();
         sr.end();
 
         batch.begin();
         Ui.text(batch,game.assets.font,"DOT//CORE",322,1780,1.65f,Color.WHITE);
-        Ui.text(batch,game.assets.font,"ALPHA 0.11.3 // PORTRAIT FIX",352,1700,0.54f,new Color(Ui.CYAN.r,Ui.CYAN.g,Ui.CYAN.b,0.8f));
-        if(game.settings.playerName!=null&&!game.settings.playerName.trim().isEmpty())
+        Ui.text(batch,game.assets.font,"ALPHA 0.12.1 // ECOLOGY PATCH",350,1700,0.54f,new Color(Ui.CYAN.r,Ui.CYAN.g,Ui.CYAN.b,0.8f));
+        if(mode==Mode.MAIN && game.settings.playerName!=null&&!game.settings.playerName.trim().isEmpty())
             Ui.centered(batch,game.assets.font,game.assets.t("welcome_back")+", "+game.settings.playerName,new Rectangle(150,1565,780,82),.70f,new Color(.72f,.88f,1f,1));
         if(cheatMessageTime>0f){
             Ui.centered(batch,game.assets.font,cheatMessage,new Rectangle(150,1420,780,110),.96f,game.settings.cheatsEnabled?Ui.GREEN:Ui.RED);
@@ -147,6 +165,8 @@ public class MenuScreen extends ScreenAdapter {
 
         if(mode==Mode.MAIN) drawMain();
         if(mode==Mode.SLOTS) drawSlots();
+        if(mode==Mode.DIFFICULTY) drawDifficulty();
+        if(mode==Mode.BESTIARY) drawBestiary();
         if(mode==Mode.SETTINGS) drawSettings();
         if(mode==Mode.ABOUT) drawAbout();
         if(mode==Mode.DELETE_CONFIRM) drawDeleteConfirm();
@@ -158,11 +178,12 @@ public class MenuScreen extends ScreenAdapter {
     }
 
     private void drawMain(){
-        drawButton(btn(1120),game.assets.t("play"),true);
-        drawButton(btn(960),game.assets.t("continue"),anySave());
-        drawButton(btn(800),game.assets.t("settings"),true);
-        drawButton(btn(640),game.assets.t("about"),true);
-        drawButton(btn(480),game.assets.t("exit"),true);
+        drawButton(btn(1180),game.assets.t("play"),true);
+        drawButton(btn(1035),game.assets.t("continue"),anySave());
+        drawButton(btn(890),game.assets.t("bestiary"),true);
+        drawButton(btn(745),game.assets.t("settings"),true);
+        drawButton(btn(600),game.assets.t("about"),true);
+        drawButton(btn(455),game.assets.t("exit"),true);
     }
 
     private void drawSlots(){
@@ -184,6 +205,109 @@ public class MenuScreen extends ScreenAdapter {
         }
         drawButton(btn(260),game.assets.t("back"),true);
     }
+
+    private void drawDifficulty(){
+        batch.begin();Ui.centered(batch,game.assets.font,game.assets.t("choose_difficulty"),new Rectangle(120,1450,840,120),1.14f,Color.WHITE);batch.end();
+        drawDifficultyCard(new Rectangle(170,1120,740,150),game.assets.t("difficulty_recon"),game.assets.t("difficulty_recon_desc"),new Color(.26f,.82f,1f,1));
+        drawDifficultyCard(new Rectangle(170,885,740,150),game.assets.t("difficulty_invasion"),game.assets.t("difficulty_invasion_desc"),Ui.GOLD);
+        drawDifficultyCard(new Rectangle(170,650,740,150),game.assets.t("difficulty_apocalypse"),game.assets.t("difficulty_apocalypse_desc"),Ui.RED);
+        drawButton(btn(340),game.assets.t("back"),true);
+    }
+    private void drawDifficultyCard(Rectangle r,String title,String desc,Color accent){
+        sr.begin(ShapeRenderer.ShapeType.Filled);sr.setColor(.012f,.030f,.043f,1);sr.rect(r.x,r.y,r.width,r.height);sr.setColor(accent);sr.rect(r.x,r.y,4,r.height);sr.end();
+        batch.begin();Ui.text(batch,game.assets.font,title,r.x+34,r.y+108,.78f,accent);Ui.text(batch,game.assets.font,desc,r.x+34,r.y+52,.53f,new Color(.78f,.88f,.94f,1));batch.end();
+    }
+
+    private void drawBestiary(){
+        long[] c=bestCounts();String[] names={"basic","fast","tank","elite","star","guardian","phase","fire_resist","ice_resist","lightning_resist","element_ward","infector","boss_catalog"};
+        batch.begin();
+        Ui.centered(batch,game.assets.font,game.assets.t("bestiary"),new Rectangle(120,1585,840,82),1.06f,Color.WHITE);
+        Ui.centered(batch,game.assets.font,game.assets.t("bestiary_hint"),new Rectangle(105,1518,870,48),.43f,new Color(.58f,.78f,.9f,1));
+        batch.end();
+        for(int i=0;i<names.length;i++){
+            int col=i%2,row=i/2;
+            Rectangle r=new Rectangle(70+col*480,1340-row*170,450,148);
+            long kills=game.settings.cheatsEnabled?999:c[i];
+            boolean known=kills>=50||i==12&&kills>=1;
+            boolean full=game.settings.cheatsEnabled||kills>=100||i==12&&kills>=1;
+            Color accent=known?bestiaryColor(i):new Color(.18f,.25f,.31f,1);
+            sr.begin(ShapeRenderer.ShapeType.Filled);
+            sr.setColor(.010f,.025f,.037f,1);sr.rect(r.x,r.y,r.width,r.height);
+            sr.setColor(accent);sr.rect(r.x,r.y,3,r.height);
+            drawBestiarySpecimen(r.x+58f,r.y+74f,i,known,accent);
+            sr.end();
+            batch.begin();
+            String title=known?game.assets.t("enemy_"+names[i]):"???";
+            Ui.text(batch,game.assets.font,title,r.x+116,r.y+107,.54f,known?Color.WHITE:new Color(.45f,.52f,.58f,1));
+            String progress=i==12?(known?game.assets.t("catalog_identified"):game.assets.t("kills")+" "+kills+"/1"):(game.assets.t("kills")+" "+Math.min(kills,100)+"/100");
+            Ui.text(batch,game.assets.font,progress,r.x+116,r.y+66,.38f,Ui.CYAN);
+            if(known)Ui.text(batch,game.assets.font,game.assets.t(full?"enemy_"+names[i]+"_weak":"enemy_"+names[i]+"_desc"),r.x+116,r.y+29,.285f,new Color(.68f,.80f,.88f,1));
+            batch.end();
+        }
+        drawButton(btn(185),game.assets.t("back"),true);
+    }
+
+    private void drawBestiarySpecimen(float cx,float cy,int i,boolean known,Color accent){
+        // Each unlocked entry uses the same visual language as the battlefield enemy,
+        // rather than a generic circular placeholder.
+        sr.setColor(.008f,.025f,.040f,1);sr.circle(cx,cy,47,32);
+        if(!known){
+            sr.setColor(.09f,.13f,.17f,1);sr.circle(cx,cy,31,28);
+            sr.setColor(.18f,.25f,.31f,1);sr.circle(cx,cy,19,24);
+            return;
+        }
+        float t=saveTimeForMenu();
+        sr.setColor(accent.r,accent.g,accent.b,.10f);sr.circle(cx,cy,43,32);
+        sr.setColor(accent.r,accent.g,accent.b,.30f);sr.circle(cx,cy,35,32);
+        sr.setColor(.012f,.030f,.055f,1);
+        switch(i){
+            case 0 -> { // Sphere
+                sr.circle(cx,cy,28,36);sr.setColor(accent);sr.circle(cx,cy,7,20);sr.setColor(1,1,1,.65f);sr.circle(cx-7,cy+8,3,12);
+            }
+            case 1 -> { // Interceptor
+                menuPolygon(cx,cy,31,3,-MathUtils.PI/2f);sr.setColor(accent);menuPolygon(cx,cy,10,3,-MathUtils.PI/2f);sr.setColor(1,1,1,.55f);sr.circle(cx,cy+4,3,10);
+            }
+            case 2 -> { // Tank
+                menuPolygon(cx,cy,30,4,MathUtils.PI/4f);sr.setColor(accent);menuPolygon(cx,cy,9,4,MathUtils.PI/4f);for(int k=0;k<4;k++){float a=k*MathUtils.PI2/4f+t*.25f;sr.circle(cx+MathUtils.cos(a)*35,cy+MathUtils.sin(a)*35,3,8);}
+            }
+            case 3 -> { // Elite
+                menuPolygon(cx,cy,30,5,t*.08f);sr.setColor(accent);menuPolygon(cx,cy,9,5,-t*.15f);
+            }
+            case 4 -> { // Star artillery
+                menuStar(cx,cy,33,14,5,t*.15f);sr.setColor(Ui.GOLD);sr.circle(cx,cy,6,16);
+            }
+            case 5 -> { // Guardian
+                menuPolygon(cx,cy,29,6,t*.08f);sr.setColor(accent);sr.circle(cx,cy,7,16);for(int k=0;k<10;k++){float a=k*MathUtils.PI2/10f-t*.35f;sr.circle(cx+MathUtils.cos(a)*41,cy+MathUtils.sin(a)*41,2.6f,8);}
+            }
+            case 6 -> { // Phase unit + tap shield
+                menuPolygon(cx,cy,27,4,MathUtils.PI/4f+t*.1f);sr.setColor(accent);menuPolygon(cx,cy,8,4,MathUtils.PI/4f);sr.setColor(.55f,.92f,1f,.55f);for(int k=0;k<8;k++){float a=k*MathUtils.PI2/8f+t*.45f;sr.circle(cx+MathUtils.cos(a)*40,cy+MathUtils.sin(a)*40,2.8f,8);}
+            }
+            case 7,8,9 -> { // Element-resistant variants
+                int sides=i==7?5:i==8?6:4;menuPolygon(cx,cy,28,sides,t*.09f);Color c=i==7?new Color(1f,.28f,.05f,1):i==8?new Color(.35f,.85f,1f,1):new Color(.55f,.45f,1f,1);sr.setColor(c);sr.circle(cx,cy,6,16);for(int k=0;k<3;k++){float a=k*MathUtils.PI2/3f+t*.85f;menuPolygon(cx+MathUtils.cos(a)*39,cy+MathUtils.sin(a)*39,5.5f,4,a);}
+            }
+            case 10 -> { // Element ward
+                menuPolygon(cx,cy,29,6,t*.08f);Color[] cs={new Color(1f,.28f,.05f,1),new Color(.35f,.85f,1f,1),new Color(.55f,.45f,1f,1)};for(int k=0;k<9;k++){float a=k*MathUtils.PI2/9f+t*.38f;Color c=cs[k%3];sr.setColor(c);sr.circle(cx+MathUtils.cos(a)*41,cy+MathUtils.sin(a)*41,2.8f,8);}sr.setColor(accent);sr.circle(cx,cy,6,16);
+            }
+            case 11 -> { // Infector / parasite ship
+                menuStar(cx,cy,30,18,6,-t*.16f);sr.setColor(.92f,.16f,1f,1);sr.circle(cx,cy,7,18);for(int k=0;k<5;k++){float a=k*MathUtils.PI2/5f-t*.9f;sr.circle(cx+MathUtils.cos(a)*38,cy+MathUtils.sin(a)*38,3.2f,8);}
+            }
+            case 12 -> { // Boss command ship
+                menuPolygon(cx,cy,34,7,t*.06f);sr.setColor(Ui.RED);menuPolygon(cx,cy,13,3,-MathUtils.PI/2f);sr.setColor(1f,.75f,.75f,.65f);sr.circle(cx-7,cy+9,3.2f,10);
+            }
+        }
+    }
+
+    private void menuPolygon(float cx,float cy,float r,int sides,float rot){
+        for(int k=0;k<sides;k++){float a1=rot+k*MathUtils.PI2/sides,a2=rot+(k+1)*MathUtils.PI2/sides;sr.triangle(cx,cy,cx+MathUtils.cos(a1)*r,cy+MathUtils.sin(a1)*r,cx+MathUtils.cos(a2)*r,cy+MathUtils.sin(a2)*r);}
+    }
+    private void menuStar(float cx,float cy,float outer,float inner,int points,float rot){
+        int n=points*2;for(int k=0;k<n;k++){float a1=rot+k*MathUtils.PI2/n,a2=rot+(k+1)*MathUtils.PI2/n;float r1=k%2==0?outer:inner,r2=(k+1)%2==0?outer:inner;sr.triangle(cx,cy,cx+MathUtils.cos(a1)*r1,cy+MathUtils.sin(a1)*r1,cx+MathUtils.cos(a2)*r2,cy+MathUtils.sin(a2)*r2);}
+    }
+
+    private float saveTimeForMenu(){return (System.currentTimeMillis()%12000L)/12000f*MathUtils.PI2;}
+
+    private Color bestiaryColor(int i){return switch(i){case 4->Ui.GOLD;case 5->Ui.GREEN;case 6->Ui.CYAN;case 7->new Color(1f,.3f,.08f,1);case 8->new Color(.35f,.85f,1f,1);case 9->new Color(.55f,.45f,1f,1);case 10->new Color(.7f,.3f,1f,1);case 11->new Color(.92f,.16f,1f,1);case 12->Ui.RED;default->new Color(.35f,.72f,1f,1);};}
+    private long[] bestCounts(){long[] a=new long[13];for(int slot=1;slot<=SaveRepository.SLOT_COUNT;slot++){if(!game.saves.exists(slot))continue;SaveData s=game.saves.load(slot);a[0]+=s.bestiaryBasic;a[1]+=s.bestiaryFast;a[2]+=s.bestiaryTank;a[3]+=s.bestiaryElite;a[4]+=s.bestiaryStar;a[5]+=s.bestiaryGuardian;a[6]+=s.bestiaryPhase;a[7]+=s.bestiaryFireResist;a[8]+=s.bestiaryIceResist;a[9]+=s.bestiaryLightningResist;a[10]+=s.bestiaryWard;a[11]+=s.bestiaryInfector;a[12]+=s.bestiaryBoss;}return a;}
 
     private void drawSettings(){
         batch.begin(); Ui.text(batch,game.assets.font,game.assets.t("settings"),360,1545,1.16f,Color.WHITE); batch.end();
@@ -231,7 +355,7 @@ public class MenuScreen extends ScreenAdapter {
         Ui.text(batch,game.assets.font,game.assets.t("about_text"),205,1150,0.72f,new Color(0.82f,0.92f,1f,1));
         Ui.text(batch,game.assets.font,game.assets.t("developer")+": Ponikarov Artem",205,975,0.68f,Color.WHITE);
         Ui.text(batch,game.assets.font,"enhort@gmail.com",205,895,0.68f,Ui.CYAN);
-        Ui.text(batch,game.assets.font,"DOT//CORE  Alpha 0.11.3",205,795,0.58f,new Color(.64f,.82f,.94f,1));
+        Ui.text(batch,game.assets.font,"DOT//CORE  Alpha 0.12.1",205,795,0.58f,new Color(.64f,.82f,.94f,1));
         batch.end();
         drawButton(btn(340),game.assets.t("back"),true);
     }

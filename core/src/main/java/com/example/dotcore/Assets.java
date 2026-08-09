@@ -20,7 +20,7 @@ public class Assets {
         "tab_general","tab_finger","tab_turrets","tab_drones","tab_elements",
         "gDamage","gRate","yield","density","spawn","value","enemySpeed","enemyDamage","enemyHealth","tab_debuffs","debuff_button","delete_save",
         "tapDmg","tapRate","plasma","trail","ultimate","gravity",
-        "buyTurret","turretDmg","turretRate","turretShield","repairTurrets","autoRepair","laser","rockets","cycleWeapon","turretPlusTwo",
+        "buyTurret","turretDmg","turretRate","turretShield","repairTurrets","repairSkill","autoRepair","laser","rockets","cycleWeapon","turretPlusTwo",
         "gunDrone","missileDrone","kamikaze","support","droneDmg","droneRate","droneAura","droneShield","dronePlusTwo",
         "fire","ice","lightning","unknown","config","shop_button","neutral","bonus_credit","bonus_heal","bonus_overdrive"
     };
