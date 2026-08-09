@@ -1,0 +1,398 @@
+{
+  "communities": {
+    "0": [
+      "core_src_main_java_com_example_dotcore_dronetype",
+      "core_src_main_java_com_example_dotcore_dronetype_dronetype",
+      "core_src_main_java_com_example_dotcore_dronetype_dronetype_gun",
+      "core_src_main_java_com_example_dotcore_dronetype_dronetype_kamikaze",
+      "core_src_main_java_com_example_dotcore_dronetype_dronetype_missile",
+      "core_src_main_java_com_example_dotcore_dronetype_dronetype_support",
+      "core_src_main_java_com_example_dotcore_gamescreen",
+      "core_src_main_java_com_example_dotcore_gamescreen_beam",
+      "core_src_main_java_com_example_dotcore_gamescreen_blackhole",
+      "core_src_main_java_com_example_dotcore_gamescreen_gamescreen",
+      "core_src_main_java_com_example_dotcore_gamescreen_gamescreen_buy",
+      "core_src_main_java_com_example_dotcore_gamescreen_gamescreen_cost",
+      "core_src_main_java_com_example_dotcore_gamescreen_gamescreen_cycleturretweapon",
+      "core_src_main_java_com_example_dotcore_gamescreen_gamescreen_dispose",
+      "core_src_main_java_com_example_dotcore_gamescreen_gamescreen_draw",
+      "core_src_main_java_com_example_dotcore_gamescreen_gamescreen_drawbackground",
+      "core_src_main_java_com_example_dotcore_gamescreen_gamescreen_drawbeams",
+      "core_src_main_java_com_example_dotcore_gamescreen_gamescreen_drawdrones",
+      "core_src_main_java_com_example_dotcore_gamescreen_gamescreen_drawenemies",
+      "core_src_main_java_com_example_dotcore_gamescreen_gamescreen_drawground",
+      "core_src_main_java_com_example_dotcore_gamescreen_gamescreen_drawholes",
+      "core_src_main_java_com_example_dotcore_gamescreen_gamescreen_drawparticles",
+      "core_src_main_java_com_example_dotcore_gamescreen_gamescreen_drawprojectiles",
+      "core_src_main_java_com_example_dotcore_gamescreen_gamescreen_drawturrets",
+      "core_src_main_java_com_example_dotcore_gamescreen_gamescreen_entry",
+      "core_src_main_java_com_example_dotcore_gamescreen_gamescreen_gamescreen",
+      "core_src_main_java_com_example_dotcore_gamescreen_gamescreen_hide",
+      "core_src_main_java_com_example_dotcore_gamescreen_gamescreen_linerect",
+      "core_src_main_java_com_example_dotcore_gamescreen_gamescreen_makehole",
+      "core_src_main_java_com_example_dotcore_gamescreen_gamescreen_marktwofinger",
+      "core_src_main_java_com_example_dotcore_gamescreen_gamescreen_newdrone",
+      "core_src_main_java_com_example_dotcore_gamescreen_gamescreen_rebuilddefenses",
+      "core_src_main_java_com_example_dotcore_gamescreen_gamescreen_render",
+      "core_src_main_java_com_example_dotcore_gamescreen_gamescreen_resize",
+      "core_src_main_java_com_example_dotcore_gamescreen_gamescreen_shopclick",
+      "core_src_main_java_com_example_dotcore_gamescreen_gamescreen_shopentries",
+      "core_src_main_java_com_example_dotcore_gamescreen_gamescreen_turretweaponname",
+      "core_src_main_java_com_example_dotcore_gamescreen_gamescreen_twotouchesdown",
+      "core_src_main_java_com_example_dotcore_gamescreen_gamescreen_updateeconomyonly",
+      "core_src_main_java_com_example_dotcore_gamescreen_java_array",
+      "core_src_main_java_com_example_dotcore_gamescreen_java_color",
+      "core_src_main_java_com_example_dotcore_gamescreen_java_orthographiccamera",
+      "core_src_main_java_com_example_dotcore_gamescreen_java_override",
+      "core_src_main_java_com_example_dotcore_gamescreen_java_shaperenderer",
+      "core_src_main_java_com_example_dotcore_gamescreen_java_spritebatch",
+      "core_src_main_java_com_example_dotcore_gamescreen_java_vector3",
+      "core_src_main_java_com_example_dotcore_gamescreen_java_viewport",
+      "core_src_main_java_com_example_dotcore_gamescreen_particle",
+      "core_src_main_java_com_example_dotcore_gamescreen_shopentry",
+      "core_src_main_java_com_example_dotcore_gamescreen_shopentry_shopentry",
+      "core_src_main_java_com_example_dotcore_gamescreen_touch",
+      "core_src_main_java_com_example_dotcore_gamescreen_turret",
+      "core_src_main_java_com_example_dotcore_savedata_savedata_dronecap",
+      "core_src_main_java_com_example_dotcore_savedata_savedata_dronecount",
+      "core_src_main_java_com_example_dotcore_savedata_savedata_turretcap"
+    ],
+    "1": [
+      "core_src_main_java_com_example_dotcore_gamescreen_drone",
+      "core_src_main_java_com_example_dotcore_gamescreen_enemy",
+      "core_src_main_java_com_example_dotcore_gamescreen_gamescreen_aoe",
+      "core_src_main_java_com_example_dotcore_gamescreen_gamescreen_applydroneaura",
+      "core_src_main_java_com_example_dotcore_gamescreen_gamescreen_autorepairtick",
+      "core_src_main_java_com_example_dotcore_gamescreen_gamescreen_beam",
+      "core_src_main_java_com_example_dotcore_gamescreen_gamescreen_burst",
+      "core_src_main_java_com_example_dotcore_gamescreen_gamescreen_chainlightning",
+      "core_src_main_java_com_example_dotcore_gamescreen_gamescreen_colorfor",
+      "core_src_main_java_com_example_dotcore_gamescreen_gamescreen_damageraw",
+      "core_src_main_java_com_example_dotcore_gamescreen_gamescreen_dealdamage",
+      "core_src_main_java_com_example_dotcore_gamescreen_gamescreen_defeat",
+      "core_src_main_java_com_example_dotcore_gamescreen_gamescreen_dist2",
+      "core_src_main_java_com_example_dotcore_gamescreen_gamescreen_disttosegment",
+      "core_src_main_java_com_example_dotcore_gamescreen_gamescreen_doplasma",
+      "core_src_main_java_com_example_dotcore_gamescreen_gamescreen_dotap",
+      "core_src_main_java_com_example_dotcore_gamescreen_gamescreen_dotrail",
+      "core_src_main_java_com_example_dotcore_gamescreen_gamescreen_dotwofingerrift",
+      "core_src_main_java_com_example_dotcore_gamescreen_gamescreen_elementcolor",
+      "core_src_main_java_com_example_dotcore_gamescreen_gamescreen_enemyattack",
+      "core_src_main_java_com_example_dotcore_gamescreen_gamescreen_explode",
+      "core_src_main_java_com_example_dotcore_gamescreen_gamescreen_gainskill",
+      "core_src_main_java_com_example_dotcore_gamescreen_gamescreen_healnearbydrones",
+      "core_src_main_java_com_example_dotcore_gamescreen_gamescreen_hostilepulse",
+      "core_src_main_java_com_example_dotcore_gamescreen_gamescreen_killdrone",
+      "core_src_main_java_com_example_dotcore_gamescreen_gamescreen_killenemy",
+      "core_src_main_java_com_example_dotcore_gamescreen_gamescreen_nearbydronecount",
+      "core_src_main_java_com_example_dotcore_gamescreen_gamescreen_nearestenemy",
+      "core_src_main_java_com_example_dotcore_gamescreen_gamescreen_skillneed",
+      "core_src_main_java_com_example_dotcore_gamescreen_gamescreen_update",
+      "core_src_main_java_com_example_dotcore_gamescreen_gamescreen_updatebeams",
+      "core_src_main_java_com_example_dotcore_gamescreen_gamescreen_updatedrones",
+      "core_src_main_java_com_example_dotcore_gamescreen_gamescreen_updateenemies",
+      "core_src_main_java_com_example_dotcore_gamescreen_gamescreen_updateholes",
+      "core_src_main_java_com_example_dotcore_gamescreen_gamescreen_updateparticles",
+      "core_src_main_java_com_example_dotcore_gamescreen_gamescreen_updateprojectiles",
+      "core_src_main_java_com_example_dotcore_gamescreen_gamescreen_updateturrets",
+      "core_src_main_java_com_example_dotcore_gamescreen_gamescreen_vibrate",
+      "core_src_main_java_com_example_dotcore_savedata_savedata_generaldamagemultiplier",
+      "core_src_main_java_com_example_dotcore_savedata_savedata_generalratemultiplier"
+    ],
+    "2": [
+      "android_src_main_java_com_example_dotcore_android_androidlauncher",
+      "android_src_main_java_com_example_dotcore_android_androidlauncher_androidlauncher",
+      "android_src_main_java_com_example_dotcore_android_androidlauncher_androidlauncher_oncreate",
+      "android_src_main_java_com_example_dotcore_android_androidlauncher_java_override",
+      "androidapplication",
+      "bundle",
+      "core_src_main_java_com_example_dotcore_assets",
+      "core_src_main_java_com_example_dotcore_assets_assets",
+      "core_src_main_java_com_example_dotcore_assets_assets_dispose",
+      "core_src_main_java_com_example_dotcore_assets_assets_load",
+      "core_src_main_java_com_example_dotcore_assets_assets_play",
+      "core_src_main_java_com_example_dotcore_assets_assets_reloadi18n",
+      "core_src_main_java_com_example_dotcore_assets_assets_snd",
+      "core_src_main_java_com_example_dotcore_assets_assets_t",
+      "core_src_main_java_com_example_dotcore_dotcoregame",
+      "core_src_main_java_com_example_dotcore_dotcoregame_dotcoregame",
+      "core_src_main_java_com_example_dotcore_dotcoregame_dotcoregame_applylanguage",
+      "core_src_main_java_com_example_dotcore_dotcoregame_dotcoregame_changescreen",
+      "core_src_main_java_com_example_dotcore_dotcoregame_dotcoregame_create",
+      "core_src_main_java_com_example_dotcore_dotcoregame_dotcoregame_dispose",
+      "core_src_main_java_com_example_dotcore_dotcoregame_dotcoregame_openmenu",
+      "core_src_main_java_com_example_dotcore_dotcoregame_java_override",
+      "core_src_main_java_com_example_dotcore_gamescreen_gamescreen_handleuidown",
+      "core_src_main_java_com_example_dotcore_gamescreen_gamescreen_resetslot",
+      "core_src_main_java_com_example_dotcore_globalsettings_globalsettings",
+      "core_src_main_java_com_example_dotcore_globalsettings_globalsettings_load",
+      "core_src_main_java_com_example_dotcore_globalsettings_globalsettings_save",
+      "core_src_main_java_com_example_dotcore_glyphfont_glyphfont_dispose",
+      "game",
+      "i18nbundle",
+      "lwjgl3_src_main_java_com_example_dotcore_lwjgl3_lwjgl3launcher",
+      "lwjgl3_src_main_java_com_example_dotcore_lwjgl3_lwjgl3launcher_lwjgl3launcher",
+      "lwjgl3_src_main_java_com_example_dotcore_lwjgl3_lwjgl3launcher_lwjgl3launcher_main",
+      "screen",
+      "sound"
+    ],
+    "3": [
+      "core_src_main_java_com_example_dotcore_dotcoregame_dotcoregame_playslot",
+      "core_src_main_java_com_example_dotcore_menuscreen",
+      "core_src_main_java_com_example_dotcore_menuscreen_java_array",
+      "core_src_main_java_com_example_dotcore_menuscreen_java_orthographiccamera",
+      "core_src_main_java_com_example_dotcore_menuscreen_java_override",
+      "core_src_main_java_com_example_dotcore_menuscreen_java_rectangle",
+      "core_src_main_java_com_example_dotcore_menuscreen_java_shaperenderer",
+      "core_src_main_java_com_example_dotcore_menuscreen_java_spritebatch",
+      "core_src_main_java_com_example_dotcore_menuscreen_java_vector3",
+      "core_src_main_java_com_example_dotcore_menuscreen_java_viewport",
+      "core_src_main_java_com_example_dotcore_menuscreen_menuscreen",
+      "core_src_main_java_com_example_dotcore_menuscreen_menuscreen_anysave",
+      "core_src_main_java_com_example_dotcore_menuscreen_menuscreen_btn",
+      "core_src_main_java_com_example_dotcore_menuscreen_menuscreen_click",
+      "core_src_main_java_com_example_dotcore_menuscreen_menuscreen_dispose",
+      "core_src_main_java_com_example_dotcore_menuscreen_menuscreen_drawabout",
+      "core_src_main_java_com_example_dotcore_menuscreen_menuscreen_drawbutton",
+      "core_src_main_java_com_example_dotcore_menuscreen_menuscreen_drawmain",
+      "core_src_main_java_com_example_dotcore_menuscreen_menuscreen_drawsettings",
+      "core_src_main_java_com_example_dotcore_menuscreen_menuscreen_drawslots",
+      "core_src_main_java_com_example_dotcore_menuscreen_menuscreen_menuscreen",
+      "core_src_main_java_com_example_dotcore_menuscreen_menuscreen_render",
+      "core_src_main_java_com_example_dotcore_menuscreen_menuscreen_resize",
+      "core_src_main_java_com_example_dotcore_menuscreen_menuscreen_updatestars",
+      "core_src_main_java_com_example_dotcore_menuscreen_mode",
+      "core_src_main_java_com_example_dotcore_menuscreen_mode_about",
+      "core_src_main_java_com_example_dotcore_menuscreen_mode_main",
+      "core_src_main_java_com_example_dotcore_menuscreen_mode_settings",
+      "core_src_main_java_com_example_dotcore_menuscreen_mode_slots",
+      "core_src_main_java_com_example_dotcore_menuscreen_star",
+      "core_src_main_java_com_example_dotcore_menuscreen_star_star",
+      "core_src_main_java_com_example_dotcore_ui_ui_text",
+      "screenadapter"
+    ],
+    "4": [
+      "core_src_main_java_com_example_dotcore_gamescreen_gamescreen_drawbanner",
+      "core_src_main_java_com_example_dotcore_gamescreen_gamescreen_drawdefeat",
+      "core_src_main_java_com_example_dotcore_gamescreen_gamescreen_drawelementbutton",
+      "core_src_main_java_com_example_dotcore_gamescreen_gamescreen_drawhud",
+      "core_src_main_java_com_example_dotcore_gamescreen_gamescreen_drawoverlay",
+      "core_src_main_java_com_example_dotcore_gamescreen_gamescreen_drawoverlaybutton",
+      "core_src_main_java_com_example_dotcore_gamescreen_gamescreen_drawpause",
+      "core_src_main_java_com_example_dotcore_gamescreen_gamescreen_drawshop",
+      "core_src_main_java_com_example_dotcore_gamescreen_gamescreen_elementname",
+      "core_src_main_java_com_example_dotcore_gamescreen_java_rectangle",
+      "core_src_main_java_com_example_dotcore_glyphfont",
+      "core_src_main_java_com_example_dotcore_glyphfont_glyphfont",
+      "core_src_main_java_com_example_dotcore_glyphfont_glyphfont_draw",
+      "core_src_main_java_com_example_dotcore_glyphfont_glyphfont_glyphfont",
+      "core_src_main_java_com_example_dotcore_glyphfont_glyphfont_height",
+      "core_src_main_java_com_example_dotcore_glyphfont_glyphfont_width",
+      "core_src_main_java_com_example_dotcore_glyphfont_java_color",
+      "core_src_main_java_com_example_dotcore_glyphfont_java_spritebatch",
+      "core_src_main_java_com_example_dotcore_savedata_savedata_passiveincomepersecond",
+      "core_src_main_java_com_example_dotcore_ui",
+      "core_src_main_java_com_example_dotcore_ui_java_color",
+      "core_src_main_java_com_example_dotcore_ui_java_rectangle",
+      "core_src_main_java_com_example_dotcore_ui_java_shaperenderer",
+      "core_src_main_java_com_example_dotcore_ui_java_spritebatch",
+      "core_src_main_java_com_example_dotcore_ui_ui",
+      "core_src_main_java_com_example_dotcore_ui_ui_button",
+      "core_src_main_java_com_example_dotcore_ui_ui_centered",
+      "core_src_main_java_com_example_dotcore_ui_ui_panel",
+      "core_src_main_java_com_example_dotcore_ui_ui_ui",
+      "texture"
+    ],
+    "5": [
+      "core_src_main_java_com_example_dotcore_gamescreen_gamescreen_spawnboss",
+      "core_src_main_java_com_example_dotcore_gamescreen_gamescreen_spawnenemy",
+      "core_src_main_java_com_example_dotcore_globalsettings",
+      "core_src_main_java_com_example_dotcore_savedata",
+      "core_src_main_java_com_example_dotcore_savedata_savedata",
+      "core_src_main_java_com_example_dotcore_savedata_savedata_creditmultiplier",
+      "core_src_main_java_com_example_dotcore_savedata_savedata_densitybonus",
+      "core_src_main_java_com_example_dotcore_savedata_savedata_enemyvaluemultiplier",
+      "core_src_main_java_com_example_dotcore_savedata_savedata_spawnmultiplier",
+      "core_src_main_java_com_example_dotcore_saverepository",
+      "core_src_main_java_com_example_dotcore_saverepository_saverepository",
+      "core_src_main_java_com_example_dotcore_saverepository_saverepository_exists",
+      "core_src_main_java_com_example_dotcore_saverepository_saverepository_fresh",
+      "core_src_main_java_com_example_dotcore_saverepository_saverepository_lastslot",
+      "core_src_main_java_com_example_dotcore_saverepository_saverepository_load",
+      "core_src_main_java_com_example_dotcore_saverepository_saverepository_save",
+      "json",
+      "preferences"
+    ],
+    "6": [
+      "core_src_main_java_com_example_dotcore_element",
+      "core_src_main_java_com_example_dotcore_element_element",
+      "core_src_main_java_com_example_dotcore_element_element_fire",
+      "core_src_main_java_com_example_dotcore_element_element_gravity",
+      "core_src_main_java_com_example_dotcore_element_element_ice",
+      "core_src_main_java_com_example_dotcore_element_element_lightning",
+      "core_src_main_java_com_example_dotcore_element_element_neutral",
+      "core_src_main_java_com_example_dotcore_element_nextcombat",
+      "core_src_main_java_com_example_dotcore_gamescreen_gamescreen_fireprojectile",
+      "core_src_main_java_com_example_dotcore_gamescreen_projectile",
+      "core_src_main_java_com_example_dotcore_gamescreen_shotkind",
+      "core_src_main_java_com_example_dotcore_gamescreen_shotkind_bullet",
+      "core_src_main_java_com_example_dotcore_gamescreen_shotkind_rocket"
+    ],
+    "7": [
+      "core_src_main_java_com_example_dotcore_gamescreen_enemykind",
+      "core_src_main_java_com_example_dotcore_gamescreen_enemykind_boss",
+      "core_src_main_java_com_example_dotcore_gamescreen_enemykind_elite",
+      "core_src_main_java_com_example_dotcore_gamescreen_enemykind_fast",
+      "core_src_main_java_com_example_dotcore_gamescreen_enemykind_normal",
+      "core_src_main_java_com_example_dotcore_gamescreen_enemykind_tank"
+    ],
+    "8": [
+      "gradlew",
+      "gradlew__entry"
+    ],
+    "9": [
+      "android_build"
+    ],
+    "10": [
+      "build"
+    ],
+    "11": [
+      "core_build"
+    ],
+    "12": [
+      "lwjgl3_build"
+    ],
+    "13": [
+      "settings"
+    ]
+  },
+  "cohesion": {
+    "0": 0.06936026936026936,
+    "1": 0.13974358974358975,
+    "2": 0.09411764705882353,
+    "3": 0.13068181818181818,
+    "4": 0.1425287356321839,
+    "5": 0.1568627450980392,
+    "6": 0.19230769230769232,
+    "7": 0.3333333333333333,
+    "8": 1.0,
+    "9": 1.0,
+    "10": 1.0,
+    "11": 1.0,
+    "12": 1.0,
+    "13": 1.0
+  },
+  "gods": [
+    {
+      "id": "core_src_main_java_com_example_dotcore_gamescreen_gamescreen",
+      "label": "GameScreen",
+      "degree": 98
+    },
+    {
+      "id": "core_src_main_java_com_example_dotcore_menuscreen_menuscreen",
+      "label": "MenuScreen",
+      "degree": 24
+    },
+    {
+      "id": "core_src_main_java_com_example_dotcore_savedata_savedata",
+      "label": "SaveData",
+      "degree": 18
+    },
+    {
+      "id": "core_src_main_java_com_example_dotcore_dotcoregame_dotcoregame",
+      "label": "DotCoreGame",
+      "degree": 17
+    },
+    {
+      "id": "core_src_main_java_com_example_dotcore_element_element",
+      "label": "Element",
+      "degree": 15
+    },
+    {
+      "id": "core_src_main_java_com_example_dotcore_assets_assets",
+      "label": "Assets",
+      "degree": 12
+    },
+    {
+      "id": "core_src_main_java_com_example_dotcore_gamescreen_enemy",
+      "label": "Enemy",
+      "degree": 12
+    },
+    {
+      "id": "core_src_main_java_com_example_dotcore_glyphfont_glyphfont",
+      "label": "GlyphFont",
+      "degree": 11
+    },
+    {
+      "id": "core_src_main_java_com_example_dotcore_saverepository_saverepository",
+      "label": "SaveRepository",
+      "degree": 10
+    },
+    {
+      "id": "core_src_main_java_com_example_dotcore_gamescreen_drone",
+      "label": "Drone",
+      "degree": 8
+    }
+  ],
+  "surprises": [
+    {
+      "source": "Assets",
+      "target": "GlyphFont",
+      "source_files": [
+        "core/src/main/java/com/example/dotcore/Assets.java",
+        "core/src/main/java/com/example/dotcore/GlyphFont.java"
+      ],
+      "confidence": "EXTRACTED",
+      "relation": "references",
+      "why": "bridges separate communities"
+    },
+    {
+      "source": "DotCoreGame",
+      "target": "SaveRepository",
+      "source_files": [
+        "core/src/main/java/com/example/dotcore/DotCoreGame.java",
+        "core/src/main/java/com/example/dotcore/SaveRepository.java"
+      ],
+      "confidence": "EXTRACTED",
+      "relation": "references",
+      "why": "bridges separate communities"
+    },
+    {
+      "source": "GameScreen",
+      "target": "DotCoreGame",
+      "source_files": [
+        "core/src/main/java/com/example/dotcore/GameScreen.java",
+        "core/src/main/java/com/example/dotcore/DotCoreGame.java"
+      ],
+      "confidence": "EXTRACTED",
+      "relation": "references",
+      "why": "bridges separate communities"
+    },
+    {
+      "source": "MenuScreen",
+      "target": "DotCoreGame",
+      "source_files": [
+        "core/src/main/java/com/example/dotcore/MenuScreen.java",
+        "core/src/main/java/com/example/dotcore/DotCoreGame.java"
+      ],
+      "confidence": "EXTRACTED",
+      "relation": "references",
+      "why": "bridges separate communities"
+    },
+    {
+      "source": "Drone",
+      "target": "DroneType",
+      "source_files": [
+        "core/src/main/java/com/example/dotcore/GameScreen.java",
+        "core/src/main/java/com/example/dotcore/DroneType.java"
+      ],
+      "confidence": "EXTRACTED",
+      "relation": "references",
+      "why": "bridges separate communities"
+    }
+  ],
+  "tokens": {
+    "input": 0,
+    "output": 0
+  }
+}

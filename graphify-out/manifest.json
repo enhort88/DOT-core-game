@@ -1,0 +1,152 @@
+{
+  "android/build.gradle": {
+    "mtime": 1786269863.7064056,
+    "ast_hash": "32a42761794cc03adb45f3c941a539ba",
+    "semantic_hash": "32a42761794cc03adb45f3c941a539ba"
+  },
+  "android/src/main/java/com/example/dotcore/android/AndroidLauncher.java": {
+    "mtime": 1786268607.0,
+    "ast_hash": "4f7c4ad1e4454aa74caa227d33d92f32",
+    "semantic_hash": "4f7c4ad1e4454aa74caa227d33d92f32"
+  },
+  "build.gradle": {
+    "mtime": 1786268607.0,
+    "ast_hash": "ae5081717f27fa81071c979f36a9691d",
+    "semantic_hash": "ae5081717f27fa81071c979f36a9691d"
+  },
+  "core/build.gradle": {
+    "mtime": 1786269134.0,
+    "ast_hash": "d78f20c059aee81639f777c784e56fcb",
+    "semantic_hash": "d78f20c059aee81639f777c784e56fcb"
+  },
+  "core/src/main/java/com/example/dotcore/Assets.java": {
+    "mtime": 1786269052.0,
+    "ast_hash": "211e50a709583ba8675c016eb2f68ae3",
+    "semantic_hash": "211e50a709583ba8675c016eb2f68ae3"
+  },
+  "core/src/main/java/com/example/dotcore/DotCoreGame.java": {
+    "mtime": 1786268987.0,
+    "ast_hash": "4599130154c61f9e45b49493cc723335",
+    "semantic_hash": "4599130154c61f9e45b49493cc723335"
+  },
+  "core/src/main/java/com/example/dotcore/DroneType.java": {
+    "mtime": 1786268623.0,
+    "ast_hash": "32e837012990e830f2c837fa62aaf5f1",
+    "semantic_hash": "32e837012990e830f2c837fa62aaf5f1"
+  },
+  "core/src/main/java/com/example/dotcore/Element.java": {
+    "mtime": 1786268623.0,
+    "ast_hash": "44fb7ef257bfd5d140541d81085c91cf",
+    "semantic_hash": "44fb7ef257bfd5d140541d81085c91cf"
+  },
+  "core/src/main/java/com/example/dotcore/GameScreen.java": {
+    "mtime": 1786269097.0,
+    "ast_hash": "d04be20f1f185b5a2ce8c8ff816372a0",
+    "semantic_hash": "d04be20f1f185b5a2ce8c8ff816372a0"
+  },
+  "core/src/main/java/com/example/dotcore/GlobalSettings.java": {
+    "mtime": 1786268623.0,
+    "ast_hash": "95c578b190c208104273300e7eebf02f",
+    "semantic_hash": "95c578b190c208104273300e7eebf02f"
+  },
+  "core/src/main/java/com/example/dotcore/GlyphFont.java": {
+    "mtime": 1786269051.0,
+    "ast_hash": "7998a348586fcaa8258a6956fb874bdc",
+    "semantic_hash": "7998a348586fcaa8258a6956fb874bdc"
+  },
+  "core/src/main/java/com/example/dotcore/MenuScreen.java": {
+    "mtime": 1786268686.0,
+    "ast_hash": "cd7b487ef6b8a0fc7012ea81b49e4465",
+    "semantic_hash": "cd7b487ef6b8a0fc7012ea81b49e4465"
+  },
+  "core/src/main/java/com/example/dotcore/SaveData.java": {
+    "mtime": 1786268987.0,
+    "ast_hash": "5a7ff525644facda18216e9960560bc4",
+    "semantic_hash": "5a7ff525644facda18216e9960560bc4"
+  },
+  "core/src/main/java/com/example/dotcore/SaveRepository.java": {
+    "mtime": 1786269785.887262,
+    "ast_hash": "1170616b3f83bda0b4c10c71be316ea9",
+    "semantic_hash": "1170616b3f83bda0b4c10c71be316ea9"
+  },
+  "core/src/main/java/com/example/dotcore/Ui.java": {
+    "mtime": 1786269051.0,
+    "ast_hash": "011997421d87da1c88761664a50d3927",
+    "semantic_hash": "011997421d87da1c88761664a50d3927"
+  },
+  "gradlew": {
+    "mtime": 1786269664.1212525,
+    "ast_hash": "db071daac10faa8e7c5bc3d571a072ff",
+    "semantic_hash": "db071daac10faa8e7c5bc3d571a072ff"
+  },
+  "lwjgl3/build.gradle": {
+    "mtime": 1786269134.0,
+    "ast_hash": "82a3af0950cee3ff296c7138edc72580",
+    "semantic_hash": "82a3af0950cee3ff296c7138edc72580"
+  },
+  "lwjgl3/src/main/java/com/example/dotcore/lwjgl3/Lwjgl3Launcher.java": {
+    "mtime": 1786268607.0,
+    "ast_hash": "bba5b04840b416e8c9aba1d4c11c3786",
+    "semantic_hash": "bba5b04840b416e8c9aba1d4c11c3786"
+  },
+  "settings.gradle": {
+    "mtime": 1786268607.0,
+    "ast_hash": "3338eac80ba5a18c5ee2045085e09fda",
+    "semantic_hash": "3338eac80ba5a18c5ee2045085e09fda"
+  },
+  "assets/sfx/boss.wav": {
+    "mtime": 1786268874.0,
+    "ast_hash": "78adf2e3cb8db88e4620df38a597a66e",
+    "semantic_hash": "78adf2e3cb8db88e4620df38a597a66e"
+  },
+  "assets/sfx/buy.wav": {
+    "mtime": 1786268874.0,
+    "ast_hash": "323ae63b9526af4baa03e62066b06b33",
+    "semantic_hash": "323ae63b9526af4baa03e62066b06b33"
+  },
+  "assets/sfx/electric.wav": {
+    "mtime": 1786268874.0,
+    "ast_hash": "156a153742c2b7b2e59c63c3edffa00e",
+    "semantic_hash": "156a153742c2b7b2e59c63c3edffa00e"
+  },
+  "assets/sfx/explosion.wav": {
+    "mtime": 1786268874.0,
+    "ast_hash": "903add3f886cc3fb8628a74d52e030c6",
+    "semantic_hash": "903add3f886cc3fb8628a74d52e030c6"
+  },
+  "assets/sfx/ice.wav": {
+    "mtime": 1786268874.0,
+    "ast_hash": "5b87693e20774147e6f6e8501393f7c5",
+    "semantic_hash": "5b87693e20774147e6f6e8501393f7c5"
+  },
+  "assets/sfx/laser.wav": {
+    "mtime": 1786268874.0,
+    "ast_hash": "8fb5835692131793b000565cfe54496c",
+    "semantic_hash": "8fb5835692131793b000565cfe54496c"
+  },
+  "assets/sfx/plasma.wav": {
+    "mtime": 1786268874.0,
+    "ast_hash": "db5711c804cfb369b9d12cf0ce0c6331",
+    "semantic_hash": "db5711c804cfb369b9d12cf0ce0c6331"
+  },
+  "assets/sfx/pop.wav": {
+    "mtime": 1786268874.0,
+    "ast_hash": "3efb9c78177e519b06084d983baa6338",
+    "semantic_hash": "3efb9c78177e519b06084d983baa6338"
+  },
+  "assets/sfx/rocket.wav": {
+    "mtime": 1786268874.0,
+    "ast_hash": "5476bc3a9058276c32162e506d46dfb1",
+    "semantic_hash": "5476bc3a9058276c32162e506d46dfb1"
+  },
+  "assets/sfx/shot.wav": {
+    "mtime": 1786268874.0,
+    "ast_hash": "a8fc3283b76f355d2acbb443230a7f59",
+    "semantic_hash": "a8fc3283b76f355d2acbb443230a7f59"
+  },
+  "assets/sfx/wave.wav": {
+    "mtime": 1786268874.0,
+    "ast_hash": "e04eb3c9178cceb89c4e1291de8d091e",
+    "semantic_hash": "e04eb3c9178cceb89c4e1291de8d091e"
+  }
+}

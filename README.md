@@ -1,4 +1,4 @@
-# DOT//CORE — Alpha 0.4
+# DOT//CORE — Alpha 0.6
 
 Cross-platform Java/libGDX prototype for Android + Linux/Windows desktop.
 
@@ -26,7 +26,7 @@ APK:
 android/build/outputs/apk/debug/android-debug.apk
 ```
 
-Requires Android SDK with compileSdk 35 and JDK 17+ (JDK 21 is fine).
+Requires Android SDK with compileSdk 36 and JDK 17+ (JDK 21 is fine).
 
 ## Controls
 
@@ -47,7 +47,7 @@ Android:
 - Two-finger drag activates the ultimate after it is purchased.
 - Short vibration feedback is used for taps, purchases, explosions, bosses and gravity skills when enabled.
 
-## Implemented in Alpha 0.4
+## Implemented in Alpha 0.6
 
 ### Game loop
 - Enemy spheres descend toward the planet.
@@ -100,8 +100,8 @@ Effects:
 - Element effects apply to turret attacks.
 
 ### Drone build
-- Base cap: 7 drones.
-- Late-game +2 slots => 9 total.
+- Base cap: 9 drones.
+- Late-game +2 slots => 11 total.
 - Gun drone.
 - Missile drone.
 - Kamikaze drone.
@@ -146,8 +146,7 @@ This is still an Alpha vertical slice, not final balance. Numbers/prices are int
 
 ## Test build notes
 
-Alpha 0.4 has `BuildFlags.TEST_MODE = true`: shop purchases and manual turret repairs do not spend credits, and the HUD shows unlimited test credits. Set it to `false` before economy balancing.
+Alpha 0.6 has `BuildFlags.TEST_MODE = true`: shop purchases and manual turret repairs do not spend credits, and the HUD shows unlimited test credits. Set it to `false` before economy balancing.
 
 
 See `CHANGELOG_ALPHA_0.4.md` for the latest UI/combat-feel changes.
-# DOT-core-game

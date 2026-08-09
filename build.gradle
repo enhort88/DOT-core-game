@@ -1,0 +1,4 @@
+allprojects {
+    group = 'com.example.dotcore'
+    version = '0.2.1-alpha'
+}
