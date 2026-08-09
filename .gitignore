@@ -5,3 +5,6 @@ android/libs/
 local.properties
 *.iml
 .DS_Store
+keystore.properties
+keystore/
+RELEASE/
