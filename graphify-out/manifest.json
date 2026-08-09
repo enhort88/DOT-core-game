@@ -1,8 +1,8 @@
 {
   "android/build.gradle": {
-    "mtime": 1786269863.7064056,
-    "ast_hash": "32a42761794cc03adb45f3c941a539ba",
-    "semantic_hash": "32a42761794cc03adb45f3c941a539ba"
+    "mtime": 1786285648.0,
+    "ast_hash": "4f9eb85ad82d97cbe4e26b19d24d705e",
+    "semantic_hash": "4f9eb85ad82d97cbe4e26b19d24d705e"
   },
   "android/src/main/java/com/example/dotcore/android/AndroidLauncher.java": {
     "mtime": 1786268607.0,
@@ -10,9 +10,9 @@
     "semantic_hash": "4f7c4ad1e4454aa74caa227d33d92f32"
   },
   "build.gradle": {
-    "mtime": 1786268607.0,
-    "ast_hash": "ae5081717f27fa81071c979f36a9691d",
-    "semantic_hash": "ae5081717f27fa81071c979f36a9691d"
+    "mtime": 1786285698.0,
+    "ast_hash": "5d5ec5e51c0df061cedcced5dc933b0e",
+    "semantic_hash": "5d5ec5e51c0df061cedcced5dc933b0e"
   },
   "core/build.gradle": {
     "mtime": 1786269134.0,
@@ -20,14 +20,14 @@
     "semantic_hash": "d78f20c059aee81639f777c784e56fcb"
   },
   "core/src/main/java/com/example/dotcore/Assets.java": {
-    "mtime": 1786269052.0,
-    "ast_hash": "211e50a709583ba8675c016eb2f68ae3",
-    "semantic_hash": "211e50a709583ba8675c016eb2f68ae3"
+    "mtime": 1786285648.0,
+    "ast_hash": "50347e12658b8f32fa6d0cd8a993462e",
+    "semantic_hash": "50347e12658b8f32fa6d0cd8a993462e"
   },
   "core/src/main/java/com/example/dotcore/DotCoreGame.java": {
-    "mtime": 1786268987.0,
-    "ast_hash": "4599130154c61f9e45b49493cc723335",
-    "semantic_hash": "4599130154c61f9e45b49493cc723335"
+    "mtime": 1786283457.0,
+    "ast_hash": "bd6861e2fd1990f002824be464125d79",
+    "semantic_hash": "bd6861e2fd1990f002824be464125d79"
   },
   "core/src/main/java/com/example/dotcore/DroneType.java": {
     "mtime": 1786268623.0,
@@ -40,34 +40,34 @@
     "semantic_hash": "44fb7ef257bfd5d140541d81085c91cf"
   },
   "core/src/main/java/com/example/dotcore/GameScreen.java": {
-    "mtime": 1786269097.0,
-    "ast_hash": "d04be20f1f185b5a2ce8c8ff816372a0",
-    "semantic_hash": "d04be20f1f185b5a2ce8c8ff816372a0"
+    "mtime": 1786285648.0,
+    "ast_hash": "8f1508d71015b9b37b25ff67946baba1",
+    "semantic_hash": "8f1508d71015b9b37b25ff67946baba1"
   },
   "core/src/main/java/com/example/dotcore/GlobalSettings.java": {
-    "mtime": 1786268623.0,
-    "ast_hash": "95c578b190c208104273300e7eebf02f",
-    "semantic_hash": "95c578b190c208104273300e7eebf02f"
+    "mtime": 1786285648.0,
+    "ast_hash": "f73ea6854e0bda03d80907fd746576d7",
+    "semantic_hash": "f73ea6854e0bda03d80907fd746576d7"
   },
   "core/src/main/java/com/example/dotcore/GlyphFont.java": {
-    "mtime": 1786269051.0,
-    "ast_hash": "7998a348586fcaa8258a6956fb874bdc",
-    "semantic_hash": "7998a348586fcaa8258a6956fb874bdc"
+    "mtime": 1786272024.0,
+    "ast_hash": "99598773a0b334109f04d3bc0d3d6416",
+    "semantic_hash": "99598773a0b334109f04d3bc0d3d6416"
   },
   "core/src/main/java/com/example/dotcore/MenuScreen.java": {
-    "mtime": 1786268686.0,
-    "ast_hash": "cd7b487ef6b8a0fc7012ea81b49e4465",
-    "semantic_hash": "cd7b487ef6b8a0fc7012ea81b49e4465"
+    "mtime": 1786285648.0,
+    "ast_hash": "b170b29f0a7856ef71cd322ca8072a58",
+    "semantic_hash": "b170b29f0a7856ef71cd322ca8072a58"
   },
   "core/src/main/java/com/example/dotcore/SaveData.java": {
-    "mtime": 1786268987.0,
-    "ast_hash": "5a7ff525644facda18216e9960560bc4",
-    "semantic_hash": "5a7ff525644facda18216e9960560bc4"
+    "mtime": 1786283457.0,
+    "ast_hash": "afca14b085848319e8fd19d9f73fb311",
+    "semantic_hash": "afca14b085848319e8fd19d9f73fb311"
   },
   "core/src/main/java/com/example/dotcore/SaveRepository.java": {
-    "mtime": 1786269785.887262,
-    "ast_hash": "1170616b3f83bda0b4c10c71be316ea9",
-    "semantic_hash": "1170616b3f83bda0b4c10c71be316ea9"
+    "mtime": 1786276949.0,
+    "ast_hash": "25f0b6c31158f00554d12c2a20013530",
+    "semantic_hash": "25f0b6c31158f00554d12c2a20013530"
   },
   "core/src/main/java/com/example/dotcore/Ui.java": {
     "mtime": 1786269051.0,
@@ -75,7 +75,7 @@
     "semantic_hash": "011997421d87da1c88761664a50d3927"
   },
   "gradlew": {
-    "mtime": 1786269664.1212525,
+    "mtime": 1786269621.0,
     "ast_hash": "db071daac10faa8e7c5bc3d571a072ff",
     "semantic_hash": "db071daac10faa8e7c5bc3d571a072ff"
   },
@@ -85,9 +85,9 @@
     "semantic_hash": "82a3af0950cee3ff296c7138edc72580"
   },
   "lwjgl3/src/main/java/com/example/dotcore/lwjgl3/Lwjgl3Launcher.java": {
-    "mtime": 1786268607.0,
-    "ast_hash": "bba5b04840b416e8c9aba1d4c11c3786",
-    "semantic_hash": "bba5b04840b416e8c9aba1d4c11c3786"
+    "mtime": 1786273185.0,
+    "ast_hash": "7a03c49802b92dfece509664b15f1dbf",
+    "semantic_hash": "7a03c49802b92dfece509664b15f1dbf"
   },
   "settings.gradle": {
     "mtime": 1786268607.0,
@@ -148,5 +148,25 @@
     "mtime": 1786268874.0,
     "ast_hash": "e04eb3c9178cceb89c4e1291de8d091e",
     "semantic_hash": "e04eb3c9178cceb89c4e1291de8d091e"
+  },
+  ".claude/settings.json": {
+    "mtime": 1786270095.3353658,
+    "ast_hash": "d81d33560fbdc52dec177dfb1e90b191",
+    "semantic_hash": "d81d33560fbdc52dec177dfb1e90b191"
+  },
+  ".codex/hooks.json": {
+    "mtime": 1786270095.3879807,
+    "ast_hash": "f09f0791f1192947483b237c5e70a4d3",
+    "semantic_hash": "f09f0791f1192947483b237c5e70a4d3"
+  },
+  "core/src/main/java/com/example/dotcore/BuildFlags.java": {
+    "mtime": 1786271809.0,
+    "ast_hash": "f3499232f417bc272e54d0e9c0116448",
+    "semantic_hash": "f3499232f417bc272e54d0e9c0116448"
+  },
+  "assets/music/space_loop.ogg": {
+    "mtime": 1786283647.0,
+    "ast_hash": "acc15af3cd3644a3bd16147c5759f857",
+    "semantic_hash": "acc15af3cd3644a3bd16147c5759f857"
   }
 }
