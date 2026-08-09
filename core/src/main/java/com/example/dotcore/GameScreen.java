@@ -117,6 +117,9 @@ public class GameScreen extends ScreenAdapter {
 
     public GameScreen(DotCoreGame game, SaveData save){
         this.game=game; this.save=save;
+        // Repair is a skill-by-use branch. Old/test saves are kept in a sane range.
+        if(this.save.repairSkillLevel < 1) this.save.repairSkillLevel = 1;
+        if(this.save.repairSkillLevel > 20) this.save.repairSkillLevel = 20;
         for(int i=0;i<touches.length;i++) touches[i]=new Touch();
         rebuildDefenses();
         banner=game.assets.t("wave")+"  "+save.wave;
@@ -244,8 +247,16 @@ public class GameScreen extends ScreenAdapter {
         return false;
     }
 
+    private float repairXpNeed(int level){ return 8f + Math.max(1,level)*4.5f; }
+
     private void gainRepairXp(float amount){
-        save.repairXp+=amount;float need=8f+save.repairSkillLevel*4.5f;while(save.repairXp>=need){save.repairXp-=need;save.repairSkillLevel++;need=8f+save.repairSkillLevel*4.5f;}
+        if(save.repairSkillLevel>=20){save.repairSkillLevel=20;save.repairXp=0f;return;}
+        save.repairXp+=amount;
+        float need=repairXpNeed(save.repairSkillLevel);
+        while(save.repairXp>=need && save.repairSkillLevel<20){
+            save.repairXp-=need;save.repairSkillLevel++;need=repairXpNeed(save.repairSkillLevel);
+        }
+        if(save.repairSkillLevel>=20){save.repairSkillLevel=20;save.repairXp=0f;}
     }
 
     private void weldFx(float x,float y,Color c){
@@ -1064,9 +1075,20 @@ public class GameScreen extends ScreenAdapter {
             ShopEntry e=list.get(i);int col=i%2,row=i/2;Rectangle r=new Rectangle(70+col*478,1310-row*230,456,204);boolean active=shopSellMode?canSell(e):e.enabled;
             sr.begin(ShapeRenderer.ShapeType.Filled);Ui.button(sr,r,active,false);sr.end();batch.begin();
             Texture icon=game.assets.icon(game.assets.t("unknown_technology").equals(e.label)?"unknown":e.id);if(icon!=null){batch.setColor(1,1,1,active?1f:.36f);batch.draw(icon,r.x+16,r.y+39,122,122);batch.setColor(Color.WHITE);}
-            Color tc=active?Color.WHITE:new Color(.5f,.53f,.58f,1);Ui.text(batch,game.assets.font,shopShortLabel(e),r.x+148,r.y+158,.60f,tc);Ui.text(batch,game.assets.font,shopLevelText(e),r.x+148,r.y+101,.49f,new Color(.6f,.78f,.9f,active?1f:.65f));
-            String price;if(shopSellMode){long refund=refundFor(e);price=active?game.assets.t("sell_refund")+" C "+refund:game.assets.t("not_sellable");}else price=cheatsEnabled()&&e.cost>0?"C 0":(e.cost<=0?game.assets.t("max"):(e.cost>=Long.MAX_VALUE/4?game.assets.t("locked"):"C "+e.cost));
-            Ui.text(batch,game.assets.font,price,r.x+148,r.y+45,.51f,shopSellMode?Ui.GREEN:(active?Ui.GOLD:new Color(.45f,.35f,.2f,1)));batch.end();
+            Color tc=active?Color.WHITE:new Color(.5f,.53f,.58f,1);
+            Ui.text(batch,game.assets.font,shopShortLabel(e),r.x+148,r.y+166,.56f,tc);
+            String levelText=shopLevelText(e);
+            // Long unlock requirements are deliberately stacked instead of escaping the card.
+            Ui.text(batch,game.assets.font,levelText,r.x+148,r.y+112,.43f,new Color(.6f,.78f,.9f,active?1f:.65f));
+            String price;
+            if(shopSellMode){
+                long refund=refundFor(e);price=active?game.assets.t("sell_refund")+" C "+refund:game.assets.t("not_sellable");
+            }else if(e.id.equals("repairSkill")){
+                price=save.repairSkillLevel>=20?game.assets.t("max"):game.assets.t("repair_by_use");
+            }else{
+                price=cheatsEnabled()&&e.cost>0?"C 0":(e.cost<=0?game.assets.t("max"):(e.cost>=Long.MAX_VALUE/4?game.assets.t("locked"):"C "+e.cost));
+            }
+            Ui.text(batch,game.assets.font,price,r.x+148,r.y+40,.47f,shopSellMode?Ui.GREEN:(active?Ui.GOLD:new Color(.45f,.35f,.2f,1)));batch.end();
         }
         drawOverlayButton(new Rectangle(74,174,250,96),shopSellMode?game.assets.t("buy_mode"):game.assets.t("sell_mode"),true);drawOverlayButton(new Rectangle(350,174,380,96),game.assets.t("close"),true);
     }
@@ -1277,22 +1299,25 @@ public class GameScreen extends ScreenAdapter {
                 case "plasma" -> game.assets.t("damage")+" "+save.tapDamageLevel+"/20";
                 case "trail" -> game.assets.t("plasma")+" Lv."+save.plasmaSkillLevel+"/5";
                 case "ultimate" -> game.assets.t("roscherk")+" Lv."+save.trailSkillLevel+"/8";
-                case "gravity" -> game.assets.t("annihilation")+" Lv."+save.ultimateSkillLevel+"/8  •  B "+save.totalBossKills+"/10";
-                case "laser" -> game.assets.t("damage")+" "+save.turretDamageLevel+"/8  •  "+game.assets.t("rate")+" "+save.turretRateLevel+"/6";
+                case "gravity" -> game.assets.t("annihilation")+" Lv."+save.ultimateSkillLevel+"/8\nB "+save.totalBossKills+"/10";
+                case "laser" -> game.assets.t("damage")+" "+save.turretDamageLevel+"/8\n"+game.assets.t("rate")+" "+save.turretRateLevel+"/6";
                 case "rockets" -> "Turret Lv."+save.turretSkillLevel+"/6";
-                case "autoRepair" -> game.assets.t("repair_skill")+" "+save.repairSkillLevel+"/8  •  B "+save.totalBossKills+"/3";
+                case "autoRepair" -> game.assets.t("repair_skill")+" "+save.repairSkillLevel+"/8\nB "+save.totalBossKills+"/3";
                 case "turretPlusTwo" -> "B "+save.totalBossKills+"/10";
                 case "missileDrone" -> "Drone Lv."+save.droneSkillLevel+"/4";
                 case "support" -> "Drone Lv."+save.droneSkillLevel+"/7";
                 case "kamikaze" -> "B "+save.totalBossKills+"/3";
                 case "droneAura" -> "Drone Lv."+save.droneSkillLevel+"/10";
-                case "dronePlusTwo" -> "Aura Lv."+save.droneAuraLevel+"/5  •  B "+save.totalBossKills+"/10";
+                case "dronePlusTwo" -> "Aura Lv."+save.droneAuraLevel+"/5\nB "+save.totalBossKills+"/10";
                 default -> "";
             };
         }
         if(e.id.equals("buyTurret"))return save.turretCount+" / "+save.turretCap();
         if(e.id.equals("gunDrone")||e.id.equals("missileDrone")||e.id.equals("kamikaze")||e.id.equals("support"))return save.droneCount()+" / "+save.droneCap();
-        if(e.id.equals("repairSkill"))return "Lv."+save.repairSkillLevel+"  •  XP "+(int)save.repairXp;
+        if(e.id.equals("repairSkill")){
+            if(save.repairSkillLevel>=20)return "Lv.20/20";
+            return "Lv."+save.repairSkillLevel+"/20\nXP "+(int)save.repairXp+"/"+(int)Math.ceil(repairXpNeed(save.repairSkillLevel));
+        }
         String l=e.label;int ix=l.indexOf("Lv.");if(ix>=0)return l.substring(ix);return e.cost==0?game.assets.t("max"):"";
     }
 

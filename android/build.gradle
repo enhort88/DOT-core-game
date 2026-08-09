@@ -18,8 +18,8 @@ android {
         applicationId 'com.example.dotcore'
         minSdk 24
         targetSdk 35
-        versionCode 10
-        versionName '0.11.1-alpha'
+        versionCode 12
+        versionName '0.11.3-alpha'
     }
 
     signingConfigs {

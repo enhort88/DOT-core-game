@@ -117,7 +117,7 @@ public class IntroScreen extends ScreenAdapter {
             default -> game.assets.t("intro_3");
         };
         // Deliberately large story text: this is a briefing, not HUD microcopy.
-        Ui.text(batch,game.assets.font,text,90,600,.72f,new Color(.90f,.96f,1f,1));
+        Ui.text(batch,game.assets.font,text,82,610,.82f,new Color(.90f,.96f,1f,1));
         Ui.centered(batch,game.assets.font,page<3?game.assets.t("tap_continue"):game.assets.t("tap_start"),new Rectangle(190,245,700,80),.68f,Ui.CYAN);
         if(replay)Ui.text(batch,game.assets.font,game.assets.t("change_name"),70,145,.58f,Ui.GOLD);
         Ui.text(batch,game.assets.font,game.assets.t("skip"),840,145,.58f,new Color(.68f,.78f,.88f,1));
@@ -133,15 +133,23 @@ public class IntroScreen extends ScreenAdapter {
 
     private void drawPagePortraits(){
         Texture general=game.assets.generalPortrait, officer=game.assets.officerPortrait;
-        if(page==0 || page==1){
-            if(general!=null)batch.draw(general,120,970,840,325);
+        // Story pages now use the characters as the actual scene, not as tiny HUD thumbnails.
+        if(page==0){
+            if(general!=null)batch.draw(general,230,735,620,875);
+        }else if(page==1){
+            if(officer!=null)batch.draw(officer,230,735,620,875);
         }else if(page==2){
-            if(officer!=null)batch.draw(officer,190,900,700,435);
+            if(officer!=null)batch.draw(officer,230,735,620,875);
+            batch.end();sr.begin(ShapeRenderer.ShapeType.Filled);
+            float pulse=1f+.05f*MathUtils.sin(time*3f);
+            sr.setColor(.45f,.10f,.78f,.16f);sr.circle(830,900,105*pulse,48);
+            sr.setColor(.75f,.30f,1f,.72f);regularPolygon(830,900,70*pulse,6,time*.25f);
+            sr.end();batch.begin();
         }else{
-            if(general!=null)batch.draw(general,65,990,540,208);
-            if(officer!=null)batch.draw(officer,625,955,390,242);
-            // central enemy hologram between the two portraits
-            batch.end();sr.begin(ShapeRenderer.ShapeType.Filled);float pulse=1f+.05f*MathUtils.sin(time*3f);sr.setColor(.45f,.10f,.78f,.13f);sr.circle(610,820,95*pulse,48);sr.setColor(.75f,.30f,1f,.65f);regularPolygon(610,820,62*pulse,6,time*.25f);sr.end();batch.begin();
+            if(general!=null)batch.draw(general,105,900,385,544);
+            if(officer!=null)batch.draw(officer,590,900,385,544);
+            batch.end();sr.begin(ShapeRenderer.ShapeType.Filled);
+            float pulse=1f+.05f*MathUtils.sin(time*3f);sr.setColor(.45f,.10f,.78f,.15f);sr.circle(540,815,88*pulse,48);sr.setColor(.75f,.30f,1f,.7f);regularPolygon(540,815,58*pulse,6,time*.25f);sr.end();batch.begin();
         }
     }
 

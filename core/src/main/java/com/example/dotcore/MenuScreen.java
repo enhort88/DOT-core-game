@@ -137,7 +137,7 @@ public class MenuScreen extends ScreenAdapter {
 
         batch.begin();
         Ui.text(batch,game.assets.font,"DOT//CORE",322,1780,1.65f,Color.WHITE);
-        Ui.text(batch,game.assets.font,"ALPHA 0.11.1 // PORTRAIT PASS",352,1700,0.54f,new Color(Ui.CYAN.r,Ui.CYAN.g,Ui.CYAN.b,0.8f));
+        Ui.text(batch,game.assets.font,"ALPHA 0.11.3 // PORTRAIT FIX",352,1700,0.54f,new Color(Ui.CYAN.r,Ui.CYAN.g,Ui.CYAN.b,0.8f));
         if(game.settings.playerName!=null&&!game.settings.playerName.trim().isEmpty())
             Ui.centered(batch,game.assets.font,game.assets.t("welcome_back")+", "+game.settings.playerName,new Rectangle(150,1565,780,82),.70f,new Color(.72f,.88f,1f,1));
         if(cheatMessageTime>0f){
@@ -231,7 +231,7 @@ public class MenuScreen extends ScreenAdapter {
         Ui.text(batch,game.assets.font,game.assets.t("about_text"),205,1150,0.72f,new Color(0.82f,0.92f,1f,1));
         Ui.text(batch,game.assets.font,game.assets.t("developer")+": Ponikarov Artem",205,975,0.68f,Color.WHITE);
         Ui.text(batch,game.assets.font,"enhort@gmail.com",205,895,0.68f,Ui.CYAN);
-        Ui.text(batch,game.assets.font,"DOT//CORE  Alpha 0.11.1",205,795,0.58f,new Color(.64f,.82f,.94f,1));
+        Ui.text(batch,game.assets.font,"DOT//CORE  Alpha 0.11.3",205,795,0.58f,new Color(.64f,.82f,.94f,1));
         batch.end();
         drawButton(btn(340),game.assets.t("back"),true);
     }
